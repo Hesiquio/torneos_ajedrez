@@ -17,7 +17,8 @@ import {
   Share2,
   Edit2,
   X,
-  Check
+  Check,
+  RotateCcw
 } from 'lucide-react';
 
 interface Tournament {
@@ -308,6 +309,27 @@ export default function App() {
     }
   };
 
+  // Reset/Re-draw tournament rounds
+  const handleResetTournament = async () => {
+    if (!selectedTournamentId) return;
+    if (!confirm('¿Estás seguro de que deseas volver a sortear las rondas? Esto eliminará permanentemente todas las partidas y resultados registrados actualmente.')) return;
+    try {
+      const res = await fetch(`/api/tournaments/${selectedTournamentId}/reset`, {
+        method: 'POST',
+        headers: { 'x-admin-key': adminKey }
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        alert(errData.error || 'Error al reiniciar el torneo');
+        return;
+      }
+      fetchTournamentDetails(selectedTournamentId);
+      fetchTournaments();
+    } catch (err) {
+      console.error('Error resetting tournament:', err);
+    }
+  };
+
   // Register / update match result
   const handleResultChange = async (matchId: string, result: string | null) => {
     if (!selectedTournamentId) return;
@@ -575,7 +597,7 @@ export default function App() {
                         )}
 
                         {tournamentDetails.tournament.status !== 'created' && (
-                          <div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             {/* Dynamic mid-tournament player addition form */}
                             <form onSubmit={handleAddPlayer} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                               <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
@@ -594,6 +616,21 @@ export default function App() {
                                 </button>
                               </div>
                             </form>
+
+                            <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                                <strong>Volver a Sortear Rondas:</strong> Esto eliminará los emparejamientos y resultados anteriores, permitiéndote editar jugadores y empezar de nuevo.
+                              </span>
+                              <button 
+                                className="btn btn-danger" 
+                                onClick={handleResetTournament}
+                                style={{ width: '100%', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                              >
+                                <RotateCcw size={16} /> Volver a Sortear
+                              </button>
+                            </div>
                           </div>
                         )}
                       </>

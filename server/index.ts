@@ -344,6 +344,37 @@ app.post('/api/tournaments/:id/start', async (req, res) => {
   }
 });
 
+// 5.5. Reset/Re-draw tournament (clears matches/rounds, sets status back to 'created')
+app.post('/api/tournaments/:id/reset', async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!(await verifyTournamentAdminKey(id, req))) {
+      return res.status(403).json({ error: 'Unauthorized: Invalid admin key' });
+    }
+
+    // Delete matches and rounds
+    await db.execute({
+      sql: 'DELETE FROM matches WHERE tournament_id = ?',
+      args: [id]
+    });
+    await db.execute({
+      sql: 'DELETE FROM rounds WHERE tournament_id = ?',
+      args: [id]
+    });
+
+    // Update status back to 'created'
+    await db.execute({
+      sql: "UPDATE tournaments SET status = 'created' WHERE id = ?",
+      args: [id]
+    });
+
+    res.json({ success: true, message: 'Tournament rounds cleared and reset to draft mode.' });
+  } catch (error) {
+    console.error('Error resetting tournament:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // 6. Update match result
 app.post('/api/matches/:id/result', async (req, res) => {
   const { id } = req.params;
