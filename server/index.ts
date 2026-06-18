@@ -205,7 +205,7 @@ app.get('/api/tournaments/:id', async (req, res) => {
 // 4. Add player to tournament
 app.post('/api/tournaments/:id/players', async (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
+  const { name, age } = req.body;
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Player name is required' });
   }
@@ -230,8 +230,8 @@ app.post('/api/tournaments/:id/players', async (req, res) => {
 
     // 1. Insert player
     await db.execute({
-      sql: 'INSERT INTO players (id, tournament_id, name) VALUES (?, ?, ?)',
-      args: [playerId, id, name.trim()]
+      sql: 'INSERT INTO players (id, tournament_id, name, age) VALUES (?, ?, ?, ?)',
+      args: [playerId, id, name.trim(), age ? parseInt(age) : null]
     });
 
     // 2. If tournament is already in progress, dynamically generate catch-up matches
@@ -415,6 +415,43 @@ app.post('/api/matches/:id/result', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating match result:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// 6.5. Update player info
+app.put('/api/players/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, age } = req.body;
+
+  if (!name || name.trim() === '') {
+    return res.status(400).json({ error: 'Player name is required' });
+  }
+
+  try {
+    // Get tournament id
+    const pRes = await db.execute({
+      sql: 'SELECT tournament_id FROM players WHERE id = ?',
+      args: [id]
+    });
+    if (pRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    const tournamentId = (pRes.rows[0] as any).tournament_id;
+
+    // Verify admin key
+    if (!(await verifyTournamentAdminKey(tournamentId, req))) {
+      return res.status(403).json({ error: 'Unauthorized: Invalid admin key' });
+    }
+
+    await db.execute({
+      sql: 'UPDATE players SET name = ?, age = ? WHERE id = ?',
+      args: [name.trim(), age ? parseInt(age) : null, id]
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating player:', error);
     res.status(500).json({ error: 'Database error' });
   }
 });

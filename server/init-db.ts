@@ -30,6 +30,7 @@ async function init() {
         id TEXT PRIMARY KEY,
         tournament_id TEXT NOT NULL,
         name TEXT NOT NULL,
+        age INTEGER, -- Edad del jugador
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
       );

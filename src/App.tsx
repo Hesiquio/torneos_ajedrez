@@ -14,7 +14,10 @@ import {
   Lock,
   Unlock,
   Key,
-  Share2
+  Share2,
+  Edit2,
+  X,
+  Check
 } from 'lucide-react';
 
 interface Tournament {
@@ -28,6 +31,7 @@ interface Tournament {
 interface Player {
   id: string;
   name: string;
+  age?: number | null;
 }
 
 interface Match {
@@ -78,6 +82,7 @@ export default function App() {
   const [newTournamentType, setNewTournamentType] = useState<'single' | 'double'>('double');
   const [newTournamentAdminKey, setNewTournamentAdminKey] = useState('');
   const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerAge, setNewPlayerAge] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Admin Security States
@@ -86,6 +91,11 @@ export default function App() {
   
   // Sharing feedback state
   const [copied, setCopied] = useState(false);
+
+  // Inline editing player states
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [editingPlayerName, setEditingPlayerName] = useState('');
+  const [editingPlayerAge, setEditingPlayerAge] = useState('');
 
   // Fetch all tournaments
   const fetchTournaments = async () => {
@@ -226,7 +236,10 @@ export default function App() {
           'Content-Type': 'application/json',
           'x-admin-key': adminKey
         },
-        body: JSON.stringify({ name: newPlayerName }),
+        body: JSON.stringify({ 
+          name: newPlayerName.trim(), 
+          age: newPlayerAge ? parseInt(newPlayerAge) : null 
+        }),
       });
       if (!res.ok) {
         const errData = await res.json();
@@ -234,10 +247,40 @@ export default function App() {
         return;
       }
       setNewPlayerName('');
+      setNewPlayerAge('');
       fetchTournamentDetails(selectedTournamentId);
       fetchTournaments();
     } catch (err) {
       console.error('Error adding player:', err);
+    }
+  };
+
+  // Edit player details inline
+  const handleUpdatePlayer = async (playerId: string) => {
+    if (!editingPlayerName.trim() || !selectedTournamentId) return;
+    try {
+      const res = await fetch(`/api/players/${playerId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminKey
+        },
+        body: JSON.stringify({
+          name: editingPlayerName.trim(),
+          age: editingPlayerAge ? parseInt(editingPlayerAge) : null
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        alert(errData.error || 'Error al editar jugador');
+        return;
+      }
+      setEditingPlayerId(null);
+      setEditingPlayerName('');
+      setEditingPlayerAge('');
+      fetchTournamentDetails(selectedTournamentId);
+    } catch (err) {
+      console.error('Error updating player:', err);
     }
   };
 
@@ -674,15 +717,25 @@ export default function App() {
                   {activeTab === 'players' && (
                     <div>
                       {tournamentDetails.tournament.status === 'created' && isAdminUnlocked && (
-                        <form onSubmit={handleAddPlayer} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                        <form onSubmit={handleAddPlayer} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                           <input
                             type="text"
                             className="input-text"
+                            style={{ flex: 2, minWidth: '150px' }}
                             placeholder="Nombre del jugador..."
+                            required
                             value={newPlayerName}
                             onChange={(e) => setNewPlayerName(e.target.value)}
                           />
-                          <button type="submit" className="btn btn-primary">
+                          <input
+                            type="number"
+                            className="input-text"
+                            style={{ flex: 1, minWidth: '80px' }}
+                            placeholder="Edad (opcional)"
+                            value={newPlayerAge}
+                            onChange={(e) => setNewPlayerAge(e.target.value)}
+                          />
+                          <button type="submit" className="btn btn-primary" style={{ flex: 'none' }}>
                             <Plus size={18} /> Agregar
                           </button>
                         </form>
@@ -692,12 +745,69 @@ export default function App() {
                         <p style={{ color: 'var(--color-text-secondary)' }}>No hay jugadores registrados en este torneo.</p>
                       ) : (
                         <ul className="players-list">
-                          {tournamentDetails.players.map((p) => (
-                            <li key={p.id} className="player-item">
-                              <span className="player-name">{p.name}</span>
-                              <Award size={18} color="var(--color-primary)" />
-                            </li>
-                          ))}
+                          {tournamentDetails.players.map((p) => {
+                            const isEditing = editingPlayerId === p.id;
+                            return (
+                              <li key={p.id} className="player-item" style={{ gap: '0.5rem' }}>
+                                {isEditing ? (
+                                  <div style={{ display: 'flex', gap: '0.5rem', width: '100%', alignItems: 'center' }}>
+                                    <input
+                                      type="text"
+                                      className="input-text"
+                                      style={{ flex: 2, padding: '0.35rem 0.75rem', fontSize: '0.9rem' }}
+                                      value={editingPlayerName}
+                                      onChange={(e) => setEditingPlayerName(e.target.value)}
+                                    />
+                                    <input
+                                      type="number"
+                                      className="input-text"
+                                      style={{ flex: 1, padding: '0.35rem 0.75rem', fontSize: '0.9rem', maxWidth: '90px' }}
+                                      placeholder="Edad"
+                                      value={editingPlayerAge}
+                                      onChange={(e) => setEditingPlayerAge(e.target.value)}
+                                    />
+                                    <button 
+                                      className="btn btn-primary" 
+                                      style={{ padding: '0.35rem', borderRadius: '6px' }}
+                                      onClick={() => handleUpdatePlayer(p.id)}
+                                    >
+                                      <Check size={16} />
+                                    </button>
+                                    <button 
+                                      className="btn btn-secondary" 
+                                      style={{ padding: '0.35rem', borderRadius: '6px' }}
+                                      onClick={() => setEditingPlayerId(null)}
+                                    >
+                                      <X size={16} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <span className="player-name">
+                                      {p.name} {p.age !== undefined && p.age !== null ? `(${p.age} años)` : ''}
+                                    </span>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                      {isAdminUnlocked && (
+                                        <button 
+                                          className="btn btn-secondary" 
+                                          style={{ padding: '0.4rem', borderRadius: '6px' }}
+                                          onClick={() => {
+                                            setEditingPlayerId(p.id);
+                                            setEditingPlayerName(p.name);
+                                            setEditingPlayerAge(p.age ? String(p.age) : '');
+                                          }}
+                                          title="Editar jugador"
+                                        >
+                                          <Edit2 size={14} />
+                                        </button>
+                                      )}
+                                      <Award size={18} color="var(--color-primary)" />
+                                    </div>
+                                  </>
+                                )}
+                              </li>
+                            );
+                          })}
                         </ul>
                       )}
                     </div>
