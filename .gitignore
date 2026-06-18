@@ -1,7 +1,5 @@
 # Dependencies
 node_modules/
-/dist
-/dist-server
 
 # Local environment variables
 .env
