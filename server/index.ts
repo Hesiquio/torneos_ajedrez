@@ -311,6 +311,12 @@ app.post('/api/tournaments/:id/start', async (req, res) => {
       return res.status(400).json({ error: 'At least 2 players are required to start the tournament' });
     }
 
+    // Update status immediately to prevent duplicate runs from rapid clicking
+    await db.execute({
+      sql: "UPDATE tournaments SET status = 'in_progress' WHERE id = ?",
+      args: [id]
+    });
+
     // Generate rounds and matches
     const doubleRound = type === 'double';
     const fixture = generateRoundRobin(players, doubleRound);
@@ -330,12 +336,6 @@ app.post('/api/tournaments/:id/start', async (req, res) => {
         });
       }
     }
-
-    // Update status
-    await db.execute({
-      sql: "UPDATE tournaments SET status = 'in_progress' WHERE id = ?",
-      args: [id]
-    });
 
     res.json({ success: true, message: 'Tournament started and fixture generated.' });
   } catch (error) {

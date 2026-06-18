@@ -84,6 +84,7 @@ export default function App() {
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerAge, setNewPlayerAge] = useState('');
   const [loading, setLoading] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   // Admin Security States
   const [adminKey, setAdminKey] = useState('');
@@ -286,7 +287,8 @@ export default function App() {
 
   // Start tournament
   const handleStartTournament = async () => {
-    if (!selectedTournamentId) return;
+    if (!selectedTournamentId || starting) return;
+    setStarting(true);
     try {
       const res = await fetch(`/api/tournaments/${selectedTournamentId}/start`, {
         method: 'POST',
@@ -301,6 +303,8 @@ export default function App() {
       fetchTournaments();
     } catch (err) {
       console.error('Error starting tournament:', err);
+    } finally {
+      setStarting(false);
     }
   };
 
@@ -558,10 +562,14 @@ export default function App() {
                             <button 
                               className="btn btn-primary" 
                               onClick={handleStartTournament}
-                              disabled={tournamentDetails.players.length < 2}
-                              style={{ width: '100%', opacity: tournamentDetails.players.length < 2 ? 0.5 : 1, cursor: tournamentDetails.players.length < 2 ? 'not-allowed' : 'pointer' }}
+                              disabled={tournamentDetails.players.length < 2 || starting}
+                              style={{ width: '100%', opacity: (tournamentDetails.players.length < 2 || starting) ? 0.5 : 1, cursor: (tournamentDetails.players.length < 2 || starting) ? 'not-allowed' : 'pointer' }}
                             >
-                              <Play size={18} /> Comenzar Torneo
+                              {starting ? 'Iniciando...' : (
+                                <>
+                                  <Play size={18} /> Comenzar Torneo
+                                </>
+                              )}
                             </button>
                           </div>
                         )}
