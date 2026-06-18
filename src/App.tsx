@@ -13,7 +13,8 @@ import {
   Award,
   Lock,
   Unlock,
-  Key
+  Key,
+  Share2
 } from 'lucide-react';
 
 interface Tournament {
@@ -82,6 +83,9 @@ export default function App() {
   // Admin Security States
   const [adminKey, setAdminKey] = useState('');
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+  
+  // Sharing feedback state
+  const [copied, setCopied] = useState(false);
 
   // Fetch all tournaments
   const fetchTournaments = async () => {
@@ -107,6 +111,12 @@ export default function App() {
 
   useEffect(() => {
     fetchTournaments();
+    // Parse URL parameter ?t=xxxx to load a shared tournament directly on page load
+    const params = new URLSearchParams(window.location.search);
+    const tournamentId = params.get('t');
+    if (tournamentId) {
+      setSelectedTournamentId(tournamentId);
+    }
   }, []);
 
   useEffect(() => {
@@ -121,12 +131,28 @@ export default function App() {
         setAdminKey('');
         setIsAdminUnlocked(false);
       }
+      // Update URL search parameters without page reload
+      const newUrl = `${window.location.origin}${window.location.pathname}?t=${selectedTournamentId}`;
+      window.history.pushState({ path: newUrl }, '', newUrl);
     } else {
       setTournamentDetails(null);
       setAdminKey('');
       setIsAdminUnlocked(false);
+      // Clear URL search parameters without page reload
+      const newUrl = `${window.location.origin}${window.location.pathname}`;
+      window.history.pushState({ path: newUrl }, '', newUrl);
     }
   }, [selectedTournamentId]);
+
+  // Copy share link helper
+  const handleCopyLink = () => {
+    if (!selectedTournamentId) return;
+    const url = `${window.location.origin}${window.location.pathname}?t=${selectedTournamentId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   // Create new tournament
   const handleCreateTournament = async (e: React.FormEvent) => {
@@ -352,13 +378,23 @@ export default function App() {
                       Modalidad: <strong>{tournamentDetails.tournament.type === 'single' ? 'Una sola vuelta (Ida)' : 'Doble vuelta (Ida y Vuelta)'}</strong>
                     </p>
                   </div>
-                  <span className={`badge ${
-                    tournamentDetails.tournament.status === 'created' ? 'badge-created' : 
-                    tournamentDetails.tournament.status === 'in_progress' ? 'badge-progress' : 'badge-completed'
-                  }`} style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
-                    {tournamentDetails.tournament.status === 'created' ? 'Borrador' : 
-                     tournamentDetails.tournament.status === 'in_progress' ? 'En Curso' : 'Finalizado'}
-                  </span>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    <button 
+                      className="btn btn-secondary" 
+                      onClick={handleCopyLink}
+                      style={{ padding: '0.5rem 1.25rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}
+                    >
+                      <Share2 size={16} /> 
+                      {copied ? '¡Enlace Copiado!' : 'Compartir'}
+                    </button>
+                    <span className={`badge ${
+                      tournamentDetails.tournament.status === 'created' ? 'badge-created' : 
+                      tournamentDetails.tournament.status === 'in_progress' ? 'badge-progress' : 'badge-completed'
+                    }`} style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
+                      {tournamentDetails.tournament.status === 'created' ? 'Borrador' : 
+                       tournamentDetails.tournament.status === 'in_progress' ? 'En Curso' : 'Finalizado'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
