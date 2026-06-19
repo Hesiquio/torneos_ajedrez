@@ -505,6 +505,124 @@ app.delete('/api/tournaments/:id', async (req, res) => {
   }
 });
 
+// 8. Export tournament as full JSON backup
+app.get('/api/tournaments/:id/export', async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!(await verifyTournamentAdminKey(id, req))) {
+      return res.status(403).json({ error: 'Unauthorized: Invalid admin key' });
+    }
+
+    const tResult = await db.execute({
+      sql: 'SELECT id, name, type, status, created_at FROM tournaments WHERE id = ?',
+      args: [id]
+    });
+    if (tResult.rows.length === 0) return res.status(404).json({ error: 'Tournament not found' });
+
+    const pResult = await db.execute({
+      sql: 'SELECT id, name, age FROM players WHERE tournament_id = ? ORDER BY name ASC',
+      args: [id]
+    });
+
+    const rResult = await db.execute({
+      sql: 'SELECT id, round_number, status FROM rounds WHERE tournament_id = ? ORDER BY round_number ASC',
+      args: [id]
+    });
+
+    const mResult = await db.execute({
+      sql: 'SELECT id, round_id, white_player_id, black_player_id, result FROM matches WHERE tournament_id = ? ORDER BY id ASC',
+      args: [id]
+    });
+
+    const backup = {
+      _version: 1,
+      _exported_at: new Date().toISOString(),
+      tournament: tResult.rows[0],
+      players: pResult.rows,
+      rounds: rResult.rows,
+      matches: mResult.rows
+    };
+
+    res.setHeader('Content-Disposition', `attachment; filename="torneo-${(tResult.rows[0] as any).name.replace(/\s+/g, '_')}-backup.json"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.json(backup);
+  } catch (error) {
+    console.error('Error exporting tournament:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// 9. Restore tournament from JSON backup
+app.post('/api/tournaments/restore', async (req, res) => {
+  const { backup, adminKey } = req.body;
+
+  if (!backup || !backup._version || !backup.tournament || !backup.players || !backup.rounds || !backup.matches) {
+    return res.status(400).json({ error: 'Archivo de respaldo inválido o incompleto.' });
+  }
+  if (!adminKey || adminKey.trim() === '') {
+    return res.status(400).json({ error: 'Se requiere una clave de administración para la restauración.' });
+  }
+
+  // Generate new IDs to avoid collisions
+  const newTournamentId = randomUUID();
+  const playerIdMap = new Map<string, string>(); // oldId -> newId
+  const roundIdMap = new Map<string, string>();   // oldId -> newId
+
+  try {
+    // 1. Insert tournament
+    const t = backup.tournament;
+    await db.execute({
+      sql: 'INSERT INTO tournaments (id, name, type, status, admin_key) VALUES (?, ?, ?, ?, ?)',
+      args: [newTournamentId, t.name, t.type, t.status, adminKey.trim()]
+    });
+
+    // 2. Insert players with new IDs
+    for (const p of backup.players) {
+      const newPlayerId = randomUUID();
+      playerIdMap.set(p.id, newPlayerId);
+      await db.execute({
+        sql: 'INSERT INTO players (id, tournament_id, name, age) VALUES (?, ?, ?, ?)',
+        args: [newPlayerId, newTournamentId, p.name, p.age ?? null]
+      });
+    }
+
+    // 3. Insert rounds with new IDs
+    for (const r of backup.rounds) {
+      const newRoundId = randomUUID();
+      roundIdMap.set(r.id, newRoundId);
+      await db.execute({
+        sql: 'INSERT INTO rounds (id, tournament_id, round_number, status) VALUES (?, ?, ?, ?)',
+        args: [newRoundId, newTournamentId, r.round_number, r.status]
+      });
+    }
+
+    // 4. Insert matches re-mapping IDs
+    for (const m of backup.matches) {
+      const newMatchId = randomUUID();
+      const newRoundId = roundIdMap.get(m.round_id);
+      const newWhiteId = playerIdMap.get(m.white_player_id);
+      const newBlackId = playerIdMap.get(m.black_player_id);
+
+      if (!newRoundId || !newWhiteId || !newBlackId) {
+        // Orphan reference: skip silently (should not happen with valid backups)
+        continue;
+      }
+
+      await db.execute({
+        sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id, result) VALUES (?, ?, ?, ?, ?, ?)',
+        args: [newMatchId, newTournamentId, newRoundId, newWhiteId, newBlackId, m.result ?? null]
+      });
+    }
+
+    res.json({ id: newTournamentId, name: t.name });
+  } catch (error) {
+    console.error('Error restoring tournament:', error);
+    // Attempt cleanup
+    try { await db.execute({ sql: 'DELETE FROM tournaments WHERE id = ?', args: [newTournamentId] }); } catch {}
+    res.status(500).json({ error: 'Error al restaurar el torneo. Verifica que el archivo sea válido.' });
+  }
+});
+
 // Fallback for SPA Routing in Production
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {

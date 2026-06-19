@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Trophy, 
   Users, 
@@ -17,7 +17,9 @@ import {
   Edit2,
   X,
   Check,
-  RotateCcw
+  RotateCcw,
+  Download,
+  Upload
 } from 'lucide-react';
 
 interface Tournament {
@@ -97,6 +99,14 @@ export default function App() {
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editingPlayerName, setEditingPlayerName] = useState('');
   const [editingPlayerAge, setEditingPlayerAge] = useState('');
+
+  // Backup / Restore states
+  const [exporting, setExporting] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restoreAdminKey, setRestoreAdminKey] = useState('');
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  const restoreFileRef = useRef<HTMLInputElement>(null);
 
   // Fetch all tournaments
   const fetchTournaments = async () => {
@@ -300,6 +310,70 @@ export default function App() {
     }
   };
 
+  // Export current tournament as JSON backup
+  const handleExport = async () => {
+    if (!selectedTournamentId || exporting) return;
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/tournaments/${selectedTournamentId}/export`, {
+        headers: { 'x-admin-key': adminKey }
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Error al exportar');
+        return;
+      }
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeName = (data.tournament?.name || 'torneo').replace(/\s+/g, '_');
+      a.href = url;
+      a.download = `${safeName}-backup.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting tournament:', err);
+      alert('Error al exportar el torneo.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Restore tournament from JSON backup file
+  const handleRestore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restoreFile || !restoreAdminKey.trim()) return;
+    setRestoring(true);
+    try {
+      const text = await restoreFile.text();
+      const backup = JSON.parse(text);
+      const res = await fetch('/api/tournaments/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ backup, adminKey: restoreAdminKey.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Error al restaurar el torneo.');
+        return;
+      }
+      // Save admin key to localStorage and navigate to the restored tournament
+      localStorage.setItem(`admin_key_${data.id}`, restoreAdminKey.trim());
+      setShowRestoreModal(false);
+      setRestoreFile(null);
+      setRestoreAdminKey('');
+      if (restoreFileRef.current) restoreFileRef.current.value = '';
+      await fetchTournaments();
+      setSelectedTournamentId(data.id);
+    } catch (err) {
+      console.error('Error restoring tournament:', err);
+      alert('El archivo no es un respaldo válido o está corrupto.');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   // Register / update match result
   const handleResultChange = async (matchId: string, result: string | null) => {
     if (!selectedTournamentId) return;
@@ -347,9 +421,14 @@ export default function App() {
           <h1 className="logo-text">ChessLeague</h1>
         </div>
         {!selectedTournamentId && (
-          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-            <Plus size={18} /> Nuevo Torneo
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn btn-secondary" onClick={() => setShowRestoreModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Upload size={18} /> Restaurar
+            </button>
+            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+              <Plus size={18} /> Nuevo Torneo
+            </button>
+          </div>
         )}
       </header>
 
@@ -596,6 +675,22 @@ export default function App() {
                                 style={{ width: '100%', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                               >
                                 <RotateCcw size={16} /> Volver a Sortear
+                              </button>
+                            </div>
+
+                            <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                                <strong>Respaldo:</strong> Descarga un archivo JSON con todos los datos del torneo para guardarlo o restaurarlo después.
+                              </span>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={handleExport}
+                                disabled={exporting}
+                                style={{ width: '100%', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', opacity: exporting ? 0.6 : 1 }}
+                              >
+                                <Download size={16} /> {exporting ? 'Exportando...' : 'Descargar Respaldo (.json)'}
                               </button>
                             </div>
                           </div>
@@ -891,6 +986,65 @@ export default function App() {
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={loading}>
                   {loading ? 'Creando...' : 'Crear Liga'}
+                </button>
+              </div>
+            </form>
+           </div>
+         </div>
+       )}
+
+      {/* Restore Tournament Modal */}
+      {showRestoreModal && (
+        <div className="modal-overlay" onClick={() => setShowRestoreModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title"><Upload size={20} /> Restaurar Torneo desde Respaldo</h3>
+              <button className="modal-close" onClick={() => setShowRestoreModal(false)}><X size={20} /></button>
+            </div>
+            <form onSubmit={handleRestore} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ padding: '0.75rem', backgroundColor: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.25)', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                Selecciona un archivo <strong>.json</strong> exportado previamente desde esta aplicación. Se creará una <strong>copia nueva</strong> del torneo con una clave de administración que tú elijas.
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Archivo de Respaldo (.json)</label>
+                <input
+                  ref={restoreFileRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="input-text"
+                  style={{ padding: '0.5rem' }}
+                  onChange={(e) => setRestoreFile(e.target.files?.[0] ?? null)}
+                  required
+                />
+                {restoreFile && (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-accent-green)', marginTop: '0.25rem', display: 'block' }}>
+                    ✓ {restoreFile.name} ({(restoreFile.size / 1024).toFixed(1)} KB)
+                  </span>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Nueva Clave de Administrador</label>
+                <input
+                  type="password"
+                  className="input-text"
+                  placeholder="Elige una clave para el torneo restaurado..."
+                  value={restoreAdminKey}
+                  onChange={(e) => setRestoreAdminKey(e.target.value)}
+                  required
+                />
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem', display: 'block' }}>
+                  Esta clave será la nueva contraseña de administrador del torneo restaurado.
+                </span>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowRestoreModal(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={restoring || !restoreFile || !restoreAdminKey.trim()}>
+                  {restoring ? 'Restaurando...' : <><Upload size={16} /> Restaurar Torneo</>}
                 </button>
               </div>
             </form>
