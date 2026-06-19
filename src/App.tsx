@@ -76,6 +76,7 @@ export default function App() {
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null);
   const [tournamentDetails, setTournamentDetails] = useState<TournamentDetails | null>(null);
   const [activeTab, setActiveTab] = useState<'standings' | 'matches' | 'players'>('standings');
+  const [showArchivedLobby, setShowArchivedLobby] = useState(false);
   
   // Modals / Form States
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -109,10 +110,10 @@ export default function App() {
   const [restoring, setRestoring] = useState(false);
   const restoreFileRef = useRef<HTMLInputElement>(null);
 
-  // Fetch all tournaments
-  const fetchTournaments = async () => {
+  // Fetch all tournaments (active or archived)
+  const fetchTournaments = async (archived = showArchivedLobby) => {
     try {
-      const res = await fetch('/api/tournaments');
+      const res = await fetch(`/api/tournaments${archived ? '?archived=true' : ''}`);
       const data = await res.json();
       setTournaments(data);
     } catch (err) {
@@ -328,6 +329,53 @@ export default function App() {
     }
   };
 
+  // Delete tournament (from inside the tournament view)
+  const handleDeleteTournament = async () => {
+    if (!selectedTournamentId) return;
+    if (!confirm('¿Eliminar este torneo permanentemente? Esta acción no se puede deshacer.')) return;
+    try {
+      const res = await fetch(`/api/tournaments/${selectedTournamentId}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-key': adminKey }
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Error al eliminar el torneo.');
+        return;
+      }
+      localStorage.removeItem(`admin_key_${selectedTournamentId}`);
+      setSelectedTournamentId(null);
+      fetchTournaments();
+    } catch (err) {
+      console.error('Error deleting tournament:', err);
+    }
+  };
+
+  // Archive / unarchive tournament
+  const handleArchiveTournament = async (unarchive = false) => {
+    if (!selectedTournamentId) return;
+    const msg = unarchive
+      ? '¿Deseas restaurar este torneo a la lista activa?'
+      : '¿Deseas archivar este torneo? Dejará de aparecer en la lista principal y podrás encontrarlo en la sección de archivados.';
+    if (!confirm(msg)) return;
+    try {
+      const res = await fetch(`/api/tournaments/${selectedTournamentId}/archive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+        body: JSON.stringify({ unarchive })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Error al archivar el torneo.');
+        return;
+      }
+      fetchTournamentDetails(selectedTournamentId);
+      fetchTournaments();
+    } catch (err) {
+      console.error('Error archiving tournament:', err);
+    }
+  };
+
   // Export current tournament as JSON backup
   const handleExport = async () => {
     if (!selectedTournamentId || exporting) return;
@@ -462,7 +510,27 @@ export default function App() {
               </p>
             </div>
 
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', marginBottom: '1.5rem' }}>Torneos Activos</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', margin: 0 }}>
+                {showArchivedLobby ? 'Torneos Archivados' : 'Torneos Activos'}
+              </h3>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className={`btn ${!showArchivedLobby ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '0.4rem 1rem', fontSize: '0.9rem' }}
+                  onClick={() => { setShowArchivedLobby(false); fetchTournaments(false); }}
+                >
+                  Activos
+                </button>
+                <button
+                  className={`btn ${showArchivedLobby ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '0.4rem 1rem', fontSize: '0.9rem' }}
+                  onClick={() => { setShowArchivedLobby(true); fetchTournaments(true); }}
+                >
+                  Archivados
+                </button>
+              </div>
+            </div>
             
             {tournaments.length === 0 ? (
               <div className="card-panel empty-state">
@@ -480,10 +548,12 @@ export default function App() {
                       <h4 className="tournament-title">{t.name}</h4>
                       <span className={`badge ${
                         t.status === 'created' ? 'badge-created' : 
-                        t.status === 'in_progress' ? 'badge-progress' : 'badge-completed'
+                        t.status === 'in_progress' ? 'badge-progress' : 
+                        t.status === 'archived' ? 'badge-created' : 'badge-completed'
                       }`}>
                         {t.status === 'created' ? 'Borrador' : 
-                         t.status === 'in_progress' ? 'En Curso' : 'Finalizado'}
+                         t.status === 'in_progress' ? 'En Curso' : 
+                         t.status === 'archived' ? '🗃 Archivado' : 'Finalizado'}
                       </span>
                     </div>
                     <div className="tournament-card-footer">
@@ -696,6 +766,44 @@ export default function App() {
                                 style={{ width: '100%', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', opacity: exporting ? 0.6 : 1 }}
                               >
                                 <Download size={16} /> {exporting ? 'Exportando...' : 'Descargar Respaldo (.json)'}
+                              </button>
+                            </div>
+
+                            <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                                <strong>Archivar:</strong> El torneo desaparece de la lista principal pero no se elimina. Puedes encontrarlo en la sección "Archivados".
+                              </span>
+                              {tournamentDetails.tournament.status === 'archived' ? (
+                                <button
+                                  className="btn btn-secondary"
+                                  onClick={() => handleArchiveTournament(true)}
+                                  style={{ width: '100%', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                                >
+                                  ↩️ Restaurar a Activos
+                                </button>
+                              ) : (
+                                <button
+                                  className="btn btn-secondary"
+                                  onClick={() => handleArchiveTournament(false)}
+                                  style={{ width: '100%', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                                >
+                                  🗃️ Archivar Torneo
+                                </button>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--color-accent-red)', opacity: 0.85 }}>
+                                <strong>Zona de peligro:</strong> Esta acción es permanente e irreversible.
+                              </span>
+                              <button
+                                className="btn btn-danger"
+                                onClick={handleDeleteTournament}
+                                style={{ width: '100%', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                              >
+                                🗑️ Eliminar Torneo Permanentemente
                               </button>
                             </div>
                           </div>

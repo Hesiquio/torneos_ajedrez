@@ -45,9 +45,14 @@ app.post('/api/tournaments/:id/verify-admin', async (req, res) => {
     res.json({ ok: true });
 });
 // 1. Get all tournaments (without admin_key)
+// Pass ?archived=true to get archived tournaments, otherwise only non-archived are returned
 app.get('/api/tournaments', async (req, res) => {
     try {
-        const result = await db_1.db.execute('SELECT id, name, type, status, created_at FROM tournaments ORDER BY created_at DESC');
+        const showArchived = req.query.archived === 'true';
+        const sql = showArchived
+            ? "SELECT id, name, type, status, created_at FROM tournaments WHERE status = 'archived' ORDER BY created_at DESC"
+            : "SELECT id, name, type, status, created_at FROM tournaments WHERE status != 'archived' ORDER BY created_at DESC";
+        const result = await db_1.db.execute(sql);
         res.json(result.rows);
     }
     catch (error) {
@@ -470,6 +475,33 @@ app.delete('/api/tournaments/:id', async (req, res) => {
         res.status(500).json({ error: 'Database error' });
     }
 });
+// 7b. Archive (or unarchive) a tournament
+app.patch('/api/tournaments/:id/archive', async (req, res) => {
+    const { id } = req.params;
+    const { unarchive } = req.body; // pass { unarchive: true } to restore
+    try {
+        if (!(await verifyTournamentAdminKey(id, req))) {
+            return res.status(403).json({ error: 'Unauthorized: Invalid admin key' });
+        }
+        // Get current status so we know what to restore to when unarchiving
+        const tRes = await db_1.db.execute({ sql: 'SELECT status, prev_status FROM tournaments WHERE id = ?', args: [id] });
+        if (tRes.rows.length === 0)
+            return res.status(404).json({ error: 'Tournament not found' });
+        const current = tRes.rows[0];
+        if (unarchive) {
+            const restoreStatus = current.prev_status || 'in_progress';
+            await db_1.db.execute({ sql: 'UPDATE tournaments SET status = ?, prev_status = NULL WHERE id = ?', args: [restoreStatus, id] });
+        }
+        else {
+            await db_1.db.execute({ sql: "UPDATE tournaments SET prev_status = status, status = 'archived' WHERE id = ?", args: [id] });
+        }
+        res.json({ success: true });
+    }
+    catch (error) {
+        console.error('Error archiving tournament:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
 // 8. Export tournament as full JSON backup
 app.get('/api/tournaments/:id/export', async (req, res) => {
     const { id } = req.params;
@@ -583,6 +615,18 @@ if (process.env.NODE_ENV === 'production') {
         res.sendFile(path_1.default.join(__dirname, '../dist/index.html'));
     });
 }
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Startup migration: add prev_status column if it doesn't exist yet
+async function runMigrations() {
+    try {
+        await db_1.db.execute('ALTER TABLE tournaments ADD COLUMN prev_status TEXT');
+        console.log('Migration: added prev_status column to tournaments');
+    }
+    catch {
+        // Column already exists — safe to ignore
+    }
+}
+runMigrations().then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
 });
