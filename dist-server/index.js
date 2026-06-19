@@ -109,11 +109,11 @@ app.get('/api/tournaments/:id', async (req, res) => {
             sql: `
         SELECT m.*, 
                pw.name AS white_player_name, 
-               pb.name AS black_player_name,
+               COALESCE(pb.name, 'Descansa') AS black_player_name,
                r.round_number
         FROM matches m
         JOIN players pw ON m.white_player_id = pw.id
-        JOIN players pb ON m.black_player_id = pb.id
+        LEFT JOIN players pb ON m.black_player_id = pb.id
         JOIN rounds r ON m.round_id = r.id
         WHERE m.tournament_id = ?
         ORDER BY r.round_number ASC
@@ -138,6 +138,9 @@ app.get('/api/tournaments/:id', async (req, res) => {
         });
         // Populate standard wins/losses/draws/points
         matches.forEach((m) => {
+            // Ignore bye matches
+            if (m.is_bye || m.black_player_id === 'BYE')
+                return;
             if (m.result) {
                 const white = standingsMap.get(m.white_player_id);
                 const black = standingsMap.get(m.black_player_id);
@@ -166,6 +169,8 @@ app.get('/api/tournaments/:id', async (req, res) => {
         // Calculate Sonneborn-Berger Score
         // SB = sum of points of opponents you defeated + half the points of opponents you drew with
         matches.forEach((m) => {
+            if (m.is_bye || m.black_player_id === 'BYE')
+                return;
             if (m.result) {
                 const white = standingsMap.get(m.white_player_id);
                 const black = standingsMap.get(m.black_player_id);
@@ -239,27 +244,65 @@ app.post('/api/tournaments/:id/players', async (req, res) => {
             });
             const existingPlayerIds = existingPlayersRes.rows.map((r) => r.id);
             if (existingPlayerIds.length > 0) {
-                // Find highest round number
-                const roundsRes = await db_1.db.execute({
-                    sql: 'SELECT COALESCE(MAX(round_number), 0) as max_round FROM rounds WHERE tournament_id = ?',
+                // Find existing rounds to fill
+                const roundsData = await db_1.db.execute({
+                    sql: `
+            SELECT r.id, r.round_number, m.white_player_id, m.black_player_id
+            FROM rounds r
+            LEFT JOIN matches m ON r.id = m.round_id
+            WHERE r.tournament_id = ? AND (m.is_bye = 0 OR m.is_bye IS NULL)
+          `,
                     args: [id]
                 });
-                const startRoundNum = (roundsRes.rows[0].max_round || 0) + 1;
-                // Generate catch-up rounds
-                const doubleRound = type === 'double';
-                const catchUpRounds = (0, scheduler_1.generateCatchUpMatches)(playerId, existingPlayerIds, doubleRound, startRoundNum);
-                // Save new rounds and matches in a transaction or batch
-                for (const round of catchUpRounds) {
-                    const roundId = (0, crypto_1.randomUUID)();
+                const roundsMap = new Map();
+                roundsData.rows.forEach((row) => {
+                    if (!roundsMap.has(row.id)) {
+                        roundsMap.set(row.id, { id: row.id, roundNumber: row.round_number, busyPlayerIds: new Set() });
+                    }
+                    const rd = roundsMap.get(row.id);
+                    if (row.white_player_id)
+                        rd.busyPlayerIds.add(row.white_player_id);
+                    if (row.black_player_id && row.black_player_id !== 'BYE')
+                        rd.busyPlayerIds.add(row.black_player_id);
+                });
+                const existingRounds = Array.from(roundsMap.values()).sort((a, b) => a.roundNumber - b.roundNumber);
+                const maxRoundNum = existingRounds.length > 0 ? existingRounds[existingRounds.length - 1].roundNumber : 0;
+                const { roundAssignments, newRoundsNeeded } = (0, scheduler_1.assignMidTournamentMatches)(playerId, existingPlayerIds, type === 'double', existingRounds, maxRoundNum + 1);
+                // Delete ALL existing BYE matches since we will regenerate them based on the new layout
+                await db_1.db.execute({ sql: "DELETE FROM matches WHERE tournament_id = ? AND (is_bye = 1 OR black_player_id = 'BYE')", args: [id] });
+                // Insert new rounds
+                for (const nr of newRoundsNeeded) {
                     await db_1.db.execute({
                         sql: 'INSERT INTO rounds (id, tournament_id, round_number, status) VALUES (?, ?, ?, ?)',
-                        args: [roundId, id, round.roundNumber, 'pending']
+                        args: [nr.id, id, nr.roundNumber, 'pending']
                     });
-                    for (const m of round.matches) {
-                        await db_1.db.execute({
-                            sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id) VALUES (?, ?, ?, ?, ?)',
-                            args: [m.id, id, roundId, m.whitePlayerId, m.blackPlayerId]
-                        });
+                }
+                // Insert new matches
+                for (const m of roundAssignments) {
+                    await db_1.db.execute({
+                        sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id, is_bye) VALUES (?, ?, ?, ?, ?, 0)',
+                        args: [(0, crypto_1.randomUUID)(), id, m.roundId, m.whitePlayerId, m.blackPlayerId]
+                    });
+                }
+                // Regenerate BYE matches for anyone missing a match in any round
+                const allRealMatches = await db_1.db.execute({ sql: "SELECT round_id, white_player_id, black_player_id FROM matches WHERE tournament_id = ?", args: [id] });
+                const allPlayers = await db_1.db.execute({ sql: "SELECT id FROM players WHERE tournament_id = ?", args: [id] });
+                const allRounds = await db_1.db.execute({ sql: "SELECT id FROM rounds WHERE tournament_id = ?", args: [id] });
+                const playerIds = allPlayers.rows.map((r) => r.id);
+                const matchesByRound = new Map();
+                allRounds.rows.forEach((r) => matchesByRound.set(r.id, new Set()));
+                allRealMatches.rows.forEach((m) => {
+                    matchesByRound.get(m.round_id)?.add(m.white_player_id);
+                    matchesByRound.get(m.round_id)?.add(m.black_player_id);
+                });
+                for (const [roundId, busyPlayers] of matchesByRound.entries()) {
+                    for (const pId of playerIds) {
+                        if (!busyPlayers.has(pId)) {
+                            await db_1.db.execute({
+                                sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id, is_bye) VALUES (?, ?, ?, ?, ?, 1)',
+                                args: [(0, crypto_1.randomUUID)(), id, roundId, pId, 'BYE']
+                            });
+                        }
                     }
                 }
             }
@@ -315,8 +358,8 @@ app.post('/api/tournaments/:id/start', async (req, res) => {
             });
             for (const m of round.matches) {
                 await db_1.db.execute({
-                    sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id) VALUES (?, ?, ?, ?, ?)',
-                    args: [m.id, id, roundId, m.whitePlayerId, m.blackPlayerId]
+                    sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id, is_bye) VALUES (?, ?, ?, ?, ?, ?)',
+                    args: [m.id, id, roundId, m.whitePlayerId, m.blackPlayerId, m.isBye ? 1 : 0]
                 });
             }
         }
@@ -582,19 +625,20 @@ app.post('/api/tournaments/restore', async (req, res) => {
                 args: [newRoundId, newTournamentId, r.round_number, r.status]
             });
         }
-        // 4. Insert matches re-mapping IDs
+        // 4. Insert matches with new IDs
         for (const m of backup.matches) {
             const newMatchId = (0, crypto_1.randomUUID)();
             const newRoundId = roundIdMap.get(m.round_id);
             const newWhiteId = playerIdMap.get(m.white_player_id);
-            const newBlackId = playerIdMap.get(m.black_player_id);
+            const isByeMatch = m.is_bye === 1 || m.black_player_id === 'BYE';
+            const newBlackId = isByeMatch ? 'BYE' : playerIdMap.get(m.black_player_id);
             if (!newRoundId || !newWhiteId || !newBlackId) {
                 // Orphan reference: skip silently (should not happen with valid backups)
                 continue;
             }
             await db_1.db.execute({
-                sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id, result) VALUES (?, ?, ?, ?, ?, ?)',
-                args: [newMatchId, newTournamentId, newRoundId, newWhiteId, newBlackId, m.result ?? null]
+                sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id, result, is_bye) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                args: [newMatchId, newTournamentId, newRoundId, newWhiteId, newBlackId, m.result ?? null, isByeMatch ? 1 : 0]
             });
         }
         res.json({ id: newTournamentId, name: t.name });
@@ -615,15 +659,18 @@ if (process.env.NODE_ENV === 'production') {
         res.sendFile(path_1.default.join(__dirname, '../dist/index.html'));
     });
 }
-// Startup migration: add prev_status column if it doesn't exist yet
+// Startup migration: add new columns if they don't exist yet
 async function runMigrations() {
     try {
         await db_1.db.execute('ALTER TABLE tournaments ADD COLUMN prev_status TEXT');
         console.log('Migration: added prev_status column to tournaments');
     }
-    catch {
-        // Column already exists — safe to ignore
+    catch { }
+    try {
+        await db_1.db.execute('ALTER TABLE matches ADD COLUMN is_bye INTEGER DEFAULT 0');
+        console.log('Migration: added is_bye column to matches');
     }
+    catch { }
 }
 runMigrations().then(() => {
     app.listen(PORT, () => {

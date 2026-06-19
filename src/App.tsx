@@ -898,31 +898,41 @@ export default function App() {
                                       <span className="color-dot white" title="Blancas"></span>
                                     </div>
 
-                                    {/* Score selection */}
-                                    <div className="versus-or-result">
-                                      {isAdminUnlocked ? (
-                                        <select 
-                                          className="result-selector" 
-                                          value={m.result || 'pending'}
-                                          onChange={(e) => handleResultChange(m.id, e.target.value)}
-                                        >
-                                          <option value="pending">-</option>
-                                          <option value="1-0">1 - 0</option>
-                                          <option value="0-1">0 - 1</option>
-                                          <option value="0.5-0.5">½ - ½</option>
-                                        </select>
-                                      ) : (
-                                        <span className={`result-badge ${m.result ? (m.result === '0.5-0.5' ? 'draw' : 'win') : ''}`}>
-                                          {m.result ? (m.result === '0.5-0.5' ? '½ - ½' : m.result) : '-'}
+                                    {(m.is_bye === 1 || m.black_player_id === 'BYE') ? (
+                                      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                        <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)', padding: '0.4rem 1rem' }}>
+                                          🛌 Descansa (Bye)
                                         </span>
-                                      )}
-                                    </div>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        {/* Score selection */}
+                                        <div className="versus-or-result">
+                                          {isAdminUnlocked ? (
+                                            <select 
+                                              className="result-selector" 
+                                              value={m.result || 'pending'}
+                                              onChange={(e) => handleResultChange(m.id, e.target.value)}
+                                            >
+                                              <option value="pending">-</option>
+                                              <option value="1-0">1 - 0</option>
+                                              <option value="0-1">0 - 1</option>
+                                              <option value="0.5-0.5">½ - ½</option>
+                                            </select>
+                                          ) : (
+                                            <span className={`result-badge ${m.result ? (m.result === '0.5-0.5' ? 'draw' : 'win') : ''}`}>
+                                              {m.result ? (m.result === '0.5-0.5' ? '½ - ½' : m.result) : '-'}
+                                            </span>
+                                          )}
+                                        </div>
 
-                                    {/* Black player */}
-                                    <div className="player-box black">
-                                      <span className="color-dot black" title="Negras"></span>
-                                      <span className="player-name">{m.black_player_name}</span>
-                                    </div>
+                                        {/* Black player */}
+                                        <div className="player-box black">
+                                          <span className="color-dot black" title="Negras"></span>
+                                          <span className="player-name">{m.black_player_name}</span>
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
                                 ))}
                               </div>

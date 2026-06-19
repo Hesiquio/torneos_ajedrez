@@ -1,15 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateRoundRobin = generateRoundRobin;
-exports.generateCatchUpMatches = generateCatchUpMatches;
+exports.assignMidTournamentMatches = assignMidTournamentMatches;
 const crypto_1 = require("crypto");
 /**
  * Generates a standard Round Robin fixture using the Circle Method (Berger System).
+ * When player count is odd, a BYE player (id='BYE') is added.
+ * Bye matches are included as real match records (blackPlayerId='BYE', isBye=true)
+ * so the resting player is visible in the UI.
  */
 function generateRoundRobin(players, doubleRound) {
     const list = [...players];
-    if (list.length % 2 !== 0) {
-        // Add a dummy player for "bye"
+    const hasBye = list.length % 2 !== 0;
+    if (hasBye) {
         list.push({ id: 'BYE', name: 'Descanso' });
     }
     const numPlayers = list.length;
@@ -20,118 +23,97 @@ function generateRoundRobin(players, doubleRound) {
         for (let i = 0; i < numPlayers / 2; i++) {
             const player1 = list[i];
             const player2 = list[numPlayers - 1 - i];
-            // Skip match if it is against BYE
-            if (player1.id === 'BYE' || player2.id === 'BYE') {
+            if (player1.id === 'BYE') {
+                // player2 has a bye this round
+                matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player2.id, blackPlayerId: 'BYE', isBye: true });
+                continue;
+            }
+            if (player2.id === 'BYE') {
+                // player1 has a bye this round
+                matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player1.id, blackPlayerId: 'BYE', isBye: true });
                 continue;
             }
             // Alternate colors to balance White/Black
             if ((r + i) % 2 === 0) {
-                matches.push({
-                    id: (0, crypto_1.randomUUID)(),
-                    whitePlayerId: player1.id,
-                    blackPlayerId: player2.id,
-                });
+                matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player1.id, blackPlayerId: player2.id });
             }
             else {
-                matches.push({
-                    id: (0, crypto_1.randomUUID)(),
-                    whitePlayerId: player2.id,
-                    blackPlayerId: player1.id,
-                });
+                matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player2.id, blackPlayerId: player1.id });
             }
         }
-        rounds.push({
-            roundNumber: r + 1,
-            matches,
-        });
+        rounds.push({ roundNumber: r + 1, matches });
         // Rotate players (keep the first one fixed)
         list.splice(1, 0, list.pop());
     }
     if (doubleRound) {
-        // Create double round robin by reversing the colors of the first round robin
-        const doubleRounds = [];
-        // Add first round robin
-        doubleRounds.push(...rounds);
-        // Add second round robin with inverted colors
+        const doubleRounds = [...rounds];
         rounds.forEach((round) => {
-            const reversedMatches = round.matches.map((match) => ({
-                id: (0, crypto_1.randomUUID)(),
-                whitePlayerId: match.blackPlayerId,
-                blackPlayerId: match.whitePlayerId,
-            }));
-            doubleRounds.push({
-                roundNumber: round.roundNumber + numRounds,
-                matches: reversedMatches,
+            const reversedMatches = round.matches.map((match) => {
+                if (match.isBye) {
+                    // Bye stays the same in second leg
+                    return { id: (0, crypto_1.randomUUID)(), whitePlayerId: match.whitePlayerId, blackPlayerId: 'BYE', isBye: true };
+                }
+                return {
+                    id: (0, crypto_1.randomUUID)(),
+                    whitePlayerId: match.blackPlayerId,
+                    blackPlayerId: match.whitePlayerId,
+                };
             });
+            doubleRounds.push({ roundNumber: round.roundNumber + numRounds, matches: reversedMatches });
         });
         return doubleRounds;
     }
     return rounds;
 }
 /**
- * Generates the necessary new matches when a player is added to an active tournament.
- * Existing matches and rounds are kept.
- * The new matches are grouped into new round numbers.
+ * Fills existing rounds with matches for a newly added player and only creates
+ * new rounds when no existing slot is available.
+ *
+ * @param newPlayerId       ID of the newly inserted player
+ * @param existingPlayerIds IDs of all previously registered players (excluding newPlayer)
+ * @param doubleRound       true = ida y vuelta
+ * @param existingRounds    Current rounds in DB: [{id, roundNumber, busyPlayerIds}]
+ * @param nextRoundNumber   Next round number to use when a new round must be created
  */
-function generateCatchUpMatches(newPlayerId, existingPlayerIds, doubleRound, startRoundNumber) {
-    const newMatches = [];
-    // Create matches against all existing players
-    existingPlayerIds.forEach((existingId, index) => {
+function assignMidTournamentMatches(newPlayerId, existingPlayerIds, doubleRound, existingRounds, nextRoundNumber) {
+    // Work on a mutable copy of the schedule
+    const schedule = existingRounds.map(r => ({ ...r, busyPlayerIds: new Set(r.busyPlayerIds) }));
+    let nextNum = nextRoundNumber;
+    const roundAssignments = [];
+    const newRoundsNeeded = [];
+    // Helper: find the first round where both players are free, or create a new one
+    const findOrCreateRound = (playerA, playerB) => {
+        for (const slot of schedule) {
+            if (!slot.busyPlayerIds.has(playerA) && !slot.busyPlayerIds.has(playerB)) {
+                slot.busyPlayerIds.add(playerA);
+                slot.busyPlayerIds.add(playerB);
+                return slot.id;
+            }
+        }
+        // No existing round available — create a new one
+        const newId = (0, crypto_1.randomUUID)();
+        const newSlot = { id: newId, roundNumber: nextNum++, busyPlayerIds: new Set([playerA, playerB]) };
+        schedule.push(newSlot);
+        newRoundsNeeded.push({ id: newId, roundNumber: newSlot.roundNumber });
+        return newId;
+    };
+    existingPlayerIds.forEach((opponentId, index) => {
         if (doubleRound) {
-            // One match as white, one as black
-            newMatches.push({
-                id: (0, crypto_1.randomUUID)(),
-                whitePlayerId: newPlayerId,
-                blackPlayerId: existingId,
-            });
-            newMatches.push({
-                id: (0, crypto_1.randomUUID)(),
-                whitePlayerId: existingId,
-                blackPlayerId: newPlayerId,
-            });
+            // Match 1: newPlayer as white
+            const roundId1 = findOrCreateRound(newPlayerId, opponentId);
+            roundAssignments.push({ roundId: roundId1, whitePlayerId: newPlayerId, blackPlayerId: opponentId, isBye: false });
+            // Match 2: opponent as white (return leg)
+            const roundId2 = findOrCreateRound(newPlayerId, opponentId);
+            roundAssignments.push({ roundId: roundId2, whitePlayerId: opponentId, blackPlayerId: newPlayerId, isBye: false });
         }
         else {
-            // Single matchup: alternate who plays white based on index to balance colors
-            if (index % 2 === 0) {
-                newMatches.push({
-                    id: (0, crypto_1.randomUUID)(),
-                    whitePlayerId: newPlayerId,
-                    blackPlayerId: existingId,
-                });
-            }
-            else {
-                newMatches.push({
-                    id: (0, crypto_1.randomUUID)(),
-                    whitePlayerId: existingId,
-                    blackPlayerId: newPlayerId,
-                });
-            }
+            // Alternate colors for balance
+            const [white, black] = index % 2 === 0
+                ? [newPlayerId, opponentId]
+                : [opponentId, newPlayerId];
+            const roundId = findOrCreateRound(newPlayerId, opponentId);
+            roundAssignments.push({ roundId, whitePlayerId: white, blackPlayerId: black, isBye: false });
         }
     });
-    // Group these matches into new rounds.
-    // To avoid having a player play multiple games in the same round, we can distribute them.
-    // However, since the new player is playing against everyone, the new player HAS to play them sequentially.
-    // So we can create one round per oponente (or oponente pair) for the new player.
-    // Let's create one round per opponent (each containing the match(es) against that opponent).
-    const rounds = [];
-    let currentRoundNum = startRoundNumber;
-    if (doubleRound) {
-        // 2 games per opponent
-        for (let i = 0; i < newMatches.length; i += 2) {
-            rounds.push({
-                roundNumber: currentRoundNum++,
-                matches: [newMatches[i], newMatches[i + 1]],
-            });
-        }
-    }
-    else {
-        // 1 game per opponent
-        for (let i = 0; i < newMatches.length; i++) {
-            rounds.push({
-                roundNumber: currentRoundNum++,
-                matches: [newMatches[i]],
-            });
-        }
-    }
-    return rounds;
+    return { roundAssignments, newRoundsNeeded };
 }
