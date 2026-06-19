@@ -483,12 +483,7 @@ app.post('/api/tournaments/:id/compress-rounds', async (req, res) => {
     // 6. Delete all old BYE matches
     await db.execute({ sql: "DELETE FROM matches WHERE tournament_id = ? AND (is_bye = 1 OR black_player_id = 'BYE')", args: [id] });
 
-    // 7. Apply match round updates
-    for (const u of updates) {
-      await db.execute({ sql: 'UPDATE matches SET round_id = ? WHERE id = ?', args: [u.newRoundId, u.matchId] });
-    }
-
-    // 8. Insert newly created rounds if any
+    // 7. Insert newly created rounds if any (must be done BEFORE updating matches due to foreign keys)
     const existingRoundIds = new Set(roundsRes.rows.map((r: any) => r.id));
     for (const r of allRounds) {
       if (!existingRoundIds.has(r.id)) {
@@ -497,6 +492,11 @@ app.post('/api/tournaments/:id/compress-rounds', async (req, res) => {
           args: [r.id, id, r.roundNumber, 'pending']
         });
       }
+    }
+
+    // 8. Apply match round updates
+    for (const u of updates) {
+      await db.execute({ sql: 'UPDATE matches SET round_id = ? WHERE id = ?', args: [u.newRoundId, u.matchId] });
     }
 
     // 9. Delete empty rounds
