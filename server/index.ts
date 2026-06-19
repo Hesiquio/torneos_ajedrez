@@ -531,9 +531,9 @@ app.post('/api/tournaments/:id/compress-rounds', async (req, res) => {
     }
 
     res.json({ success: true, message: 'Rounds compressed successfully' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error compressing rounds:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Database error: ' + error.message });
   }
 });
 
@@ -845,7 +845,7 @@ app.post('/api/tournaments/restore', async (req, res) => {
 
 // Fallback for SPA Routing in Production
 if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
+  app.get('*', (_req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
 }
