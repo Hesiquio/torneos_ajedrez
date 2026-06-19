@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
-  Trophy, 
   Users, 
   Calendar, 
   Plus, 
@@ -616,42 +615,6 @@ export default function App() {
                 {/* Left Panel: Standings & Fast actions */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   
-                  {/* Standings Table Card */}
-                  <div className="card-panel">
-                    <h3 className="card-title">
-                      <Trophy size={20} color="var(--color-primary)" /> Clasificación
-                    </h3>
-                    {tournamentDetails.standings.length === 0 ? (
-                      <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Agrega jugadores para ver la tabla.</p>
-                    ) : (
-                      <div className="table-wrapper">
-                        <table className="standings-table">
-                          <thead>
-                            <tr>
-                              <th style={{ textAlign: 'center' }}>Pos</th>
-                              <th>Jugador</th>
-                              <th style={{ textAlign: 'center' }}>PJ</th>
-                              <th style={{ textAlign: 'center' }}>Pts</th>
-                              <th style={{ textAlign: 'center' }}>SB</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {tournamentDetails.standings.map((s, index) => (
-                              <tr key={s.id}>
-                                <td className={`rank-cell ${index === 0 ? 'rank-top-1' : index === 1 ? 'rank-top-2' : index === 2 ? 'rank-top-3' : ''}`}>
-                                  {index + 1}
-                                </td>
-                                <td className="player-cell">{s.name}</td>
-                                <td style={{ textAlign: 'center' }}>{s.played}</td>
-                                <td className="points-cell" style={{ textAlign: 'center' }}>{s.points}</td>
-                                <td style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{s.sb.toFixed(2)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
 
                   {/* Actions / Admin Panel */}
                   <div className="card-panel">
