@@ -257,6 +257,60 @@ export default function App() {
     }
   };
 
+  // Export players to JSON
+  const handleExportPlayers = () => {
+    if (!tournamentDetails || tournamentDetails.players.length === 0) return;
+    const exportData = tournamentDetails.players.map(p => ({
+      name: p.name,
+      age: p.age
+    }));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `jugadores_${tournamentDetails.tournament.name.replace(/\s+/g, '_')}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  // Import players from JSON
+  const handleImportPlayers = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !selectedTournamentId) return;
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (!Array.isArray(json)) {
+          alert('El archivo JSON debe contener un arreglo de jugadores.');
+          return;
+        }
+        const res = await fetch(`/api/tournaments/${selectedTournamentId}/players/bulk`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-admin-key': adminKey
+          },
+          body: JSON.stringify({ players: json })
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          alert(errData.error || 'Error al importar jugadores');
+          return;
+        }
+        fetchTournamentDetails(selectedTournamentId);
+        fetchTournaments();
+        alert('Jugadores importados correctamente.');
+      } catch (err) {
+        console.error('Error parsing or uploading JSON:', err);
+        alert('Error al leer el archivo JSON.');
+      }
+      // Reset input
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  };
+
   // Edit player details inline
   const handleUpdatePlayer = async (playerId: string) => {
     if (!editingPlayerName.trim() || !selectedTournamentId) return;
@@ -1005,6 +1059,28 @@ export default function App() {
                             <Plus size={18} /> Agregar
                           </button>
                         </form>
+                      )}
+
+                      {isAdminUnlocked && tournamentDetails.players.length > 0 && (
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                          <button onClick={handleExportPlayers} className="btn btn-secondary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                            <Download size={18} /> Exportar Jugadores
+                          </button>
+                          {tournamentDetails.tournament.status === 'created' && (
+                            <label className="btn btn-secondary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0 }}>
+                              <Upload size={18} /> Importar (Añadir a lista)
+                              <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportPlayers} />
+                            </label>
+                          )}
+                        </div>
+                      )}
+                      {isAdminUnlocked && tournamentDetails.players.length === 0 && tournamentDetails.tournament.status === 'created' && (
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                          <label className="btn btn-secondary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0 }}>
+                            <Upload size={18} /> Importar desde JSON
+                            <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportPlayers} />
+                          </label>
+                        </div>
                       )}
 
                       {tournamentDetails.players.length === 0 ? (

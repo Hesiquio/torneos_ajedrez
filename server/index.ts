@@ -348,6 +348,47 @@ app.post('/api/tournaments/:id/players', async (req, res) => {
   }
 });
 
+// 4.5 Bulk add players (from JSON import)
+app.post('/api/tournaments/:id/players/bulk', async (req, res) => {
+  const { id } = req.params;
+  const { players } = req.body; // Array of { name, age }
+
+  if (!Array.isArray(players) || players.length === 0) {
+    return res.status(400).json({ error: 'Valid players array is required' });
+  }
+
+  try {
+    if (!(await verifyTournamentAdminKey(id, req))) {
+      return res.status(403).json({ error: 'Unauthorized: Invalid admin key' });
+    }
+
+    const tResult = await db.execute({
+      sql: 'SELECT status FROM tournaments WHERE id = ?',
+      args: [id]
+    });
+    if (tResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+    if ((tResult.rows[0] as any).status !== 'created') {
+      return res.status(400).json({ error: 'Cannot bulk import players after tournament has started' });
+    }
+
+    for (const p of players) {
+      if (!p.name || typeof p.name !== 'string' || p.name.trim() === '') continue;
+      const playerId = randomUUID();
+      await db.execute({
+        sql: 'INSERT INTO players (id, tournament_id, name, age) VALUES (?, ?, ?, ?)',
+        args: [playerId, id, p.name.trim(), typeof p.age === 'number' ? p.age : null]
+      });
+    }
+
+    res.json({ success: true, message: `Imported players successfully` });
+  } catch (error) {
+    console.error('Error bulk adding players:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // 5. Start tournament (generates full fixture for all players added)
 app.post('/api/tournaments/:id/start', async (req, res) => {
   const { id } = req.params;
