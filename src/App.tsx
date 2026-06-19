@@ -91,6 +91,8 @@ export default function App() {
   // Admin Security States
   const [adminKey, setAdminKey] = useState('');
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+  const [verifyingAdminKey, setVerifyingAdminKey] = useState(false);
+  const [adminKeyError, setAdminKeyError] = useState('');
   
   // Sharing feedback state
   const [copied, setCopied] = useState(false);
@@ -143,11 +145,28 @@ export default function App() {
   useEffect(() => {
     if (selectedTournamentId) {
       fetchTournamentDetails(selectedTournamentId);
-      // Auto unlock admin key if saved in localStorage
+      setAdminKeyError('');
+      // Auto unlock admin key if saved in localStorage — verify with server first
       const savedKey = localStorage.getItem(`admin_key_${selectedTournamentId}`);
       if (savedKey) {
         setAdminKey(savedKey);
-        setIsAdminUnlocked(true);
+        // Silently verify stored key against the server
+        fetch(`/api/tournaments/${selectedTournamentId}/verify-admin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-key': savedKey }
+        }).then(r => {
+          if (r.ok) {
+            setIsAdminUnlocked(true);
+          } else {
+            // Key stored locally is no longer valid (e.g. changed on server)
+            localStorage.removeItem(`admin_key_${selectedTournamentId}`);
+            setAdminKey('');
+            setIsAdminUnlocked(false);
+          }
+        }).catch(() => {
+          // Network error: keep key in state but don't unlock
+          setIsAdminUnlocked(false);
+        });
       } else {
         setAdminKey('');
         setIsAdminUnlocked(false);
@@ -534,22 +553,44 @@ export default function App() {
                           type="password"
                           className="input-text"
                           placeholder="Clave de admin..."
-                          style={{ width: '160px', padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                          style={{ width: '160px', padding: '0.4rem 0.75rem', fontSize: '0.85rem', borderColor: adminKeyError ? 'var(--color-accent-red)' : undefined }}
                           value={adminKey}
-                          onChange={(e) => setAdminKey(e.target.value)}
+                          onChange={(e) => { setAdminKey(e.target.value); setAdminKeyError(''); }}
+                          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.nextElementSibling && (e.currentTarget.nextElementSibling as HTMLButtonElement).click()}
                         />
                         <button 
                           className="btn btn-primary" 
-                          style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
-                          onClick={() => {
-                            if (adminKey.trim()) {
-                              setIsAdminUnlocked(true);
-                              localStorage.setItem(`admin_key_${selectedTournamentId}`, adminKey.trim());
+                          style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', opacity: verifyingAdminKey ? 0.7 : 1 }}
+                          disabled={verifyingAdminKey}
+                          onClick={async () => {
+                            if (!adminKey.trim() || !selectedTournamentId) return;
+                            setVerifyingAdminKey(true);
+                            setAdminKeyError('');
+                            try {
+                              const res = await fetch(`/api/tournaments/${selectedTournamentId}/verify-admin`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey.trim() }
+                              });
+                              if (res.ok) {
+                                setIsAdminUnlocked(true);
+                                localStorage.setItem(`admin_key_${selectedTournamentId}`, adminKey.trim());
+                              } else {
+                                setAdminKeyError('Clave incorrecta');
+                              }
+                            } catch {
+                              setAdminKeyError('Error de conexión');
+                            } finally {
+                              setVerifyingAdminKey(false);
                             }
                           }}
                         >
-                          Activar
+                          {verifyingAdminKey ? '...' : 'Activar'}
                         </button>
+                        {adminKeyError && (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--color-accent-red)', whiteSpace: 'nowrap' }}>
+                            ✗ {adminKeyError}
+                          </span>
+                        )}
                       </>
                     ) : (
                       <button 
@@ -558,6 +599,7 @@ export default function App() {
                         onClick={() => {
                           setIsAdminUnlocked(false);
                           setAdminKey('');
+                          setAdminKeyError('');
                           localStorage.removeItem(`admin_key_${selectedTournamentId}`);
                         }}
                       >

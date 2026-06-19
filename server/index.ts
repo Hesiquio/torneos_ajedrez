@@ -32,6 +32,16 @@ async function verifyTournamentAdminKey(tournamentId: string, req: express.Reque
   }
 }
 
+// 0. Verify admin key (used by frontend before unlocking admin UI)
+app.post('/api/tournaments/:id/verify-admin', async (req, res) => {
+  const { id } = req.params;
+  const isValid = await verifyTournamentAdminKey(id, req);
+  if (!isValid) {
+    return res.status(403).json({ error: 'Clave de administración incorrecta.' });
+  }
+  res.json({ ok: true });
+});
+
 // 1. Get all tournaments (without admin_key)
 app.get('/api/tournaments', async (req, res) => {
   try {
