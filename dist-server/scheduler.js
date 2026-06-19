@@ -33,12 +33,25 @@ function generateRoundRobin(players, doubleRound) {
                 matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player1.id, blackPlayerId: 'BYE', isBye: true });
                 continue;
             }
-            // Alternate colors to balance White/Black
-            if ((r + i) % 2 === 0) {
-                matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player1.id, blackPlayerId: player2.id });
+            // FIDE Berger system color alternation rule:
+            // The fixed player (index 0) alternates every round (White on even rounds).
+            // For all other pairs, the player at the odd index 'i' gets White,
+            // and if 'i' is even, the player at the other end gets White.
+            if (i === 0) {
+                if (r % 2 === 0) {
+                    matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player1.id, blackPlayerId: player2.id });
+                }
+                else {
+                    matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player2.id, blackPlayerId: player1.id });
+                }
             }
             else {
-                matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player2.id, blackPlayerId: player1.id });
+                if (i % 2 === 1) {
+                    matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player1.id, blackPlayerId: player2.id });
+                }
+                else {
+                    matches.push({ id: (0, crypto_1.randomUUID)(), whitePlayerId: player2.id, blackPlayerId: player1.id });
+                }
             }
         }
         rounds.push({ roundNumber: r + 1, matches });
