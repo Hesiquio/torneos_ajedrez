@@ -370,6 +370,115 @@ app.post('/api/tournaments/:id/start', async (req, res) => {
         res.status(500).json({ error: 'Database error' });
     }
 });
+// 5.4. Compress Rounds (Fixes tournaments with too many extra rounds by moving pending matches to empty slots)
+app.post('/api/tournaments/:id/compress-rounds', async (req, res) => {
+    const { id } = req.params;
+    try {
+        if (!(await verifyTournamentAdminKey(id, req))) {
+            return res.status(403).json({ error: 'Unauthorized: Invalid admin key' });
+        }
+        // 1. Get all non-BYE matches
+        const matchesRes = await db_1.db.execute({
+            sql: 'SELECT id, round_id, white_player_id, black_player_id, result FROM matches WHERE tournament_id = ? AND (is_bye = 0 OR is_bye IS NULL) AND black_player_id != "BYE"',
+            args: [id]
+        });
+        const allMatches = matchesRes.rows;
+        // 2. Get all rounds
+        const roundsRes = await db_1.db.execute({
+            sql: 'SELECT id, round_number FROM rounds WHERE tournament_id = ? ORDER BY round_number ASC',
+            args: [id]
+        });
+        const allRounds = roundsRes.rows.map((r) => ({ id: r.id, roundNumber: r.round_number, busyPlayerIds: new Set(), matchIds: [] }));
+        // 3. Separate completed vs pending matches
+        const completedMatches = allMatches.filter((m) => m.result && m.result !== 'pending');
+        const pendingMatches = allMatches.filter((m) => !m.result || m.result === 'pending');
+        // 4. Populate busy players from completed matches
+        const roundMap = new Map();
+        allRounds.forEach(r => roundMap.set(r.id, r));
+        completedMatches.forEach((m) => {
+            const r = roundMap.get(m.round_id);
+            if (r) {
+                r.busyPlayerIds.add(m.white_player_id);
+                r.busyPlayerIds.add(m.black_player_id);
+                r.matchIds.push(m.id);
+            }
+        });
+        // 5. Reassign pending matches
+        let nextRoundNum = allRounds.length > 0 ? Math.max(...allRounds.map(r => r.roundNumber)) + 1 : 1;
+        const updates = [];
+        pendingMatches.forEach((m) => {
+            let assignedRoundId = null;
+            // Try to fit in existing rounds
+            for (const r of allRounds) {
+                if (!r.busyPlayerIds.has(m.white_player_id) && !r.busyPlayerIds.has(m.black_player_id)) {
+                    assignedRoundId = r.id;
+                    r.busyPlayerIds.add(m.white_player_id);
+                    r.busyPlayerIds.add(m.black_player_id);
+                    r.matchIds.push(m.id);
+                    break;
+                }
+            }
+            // If no existing round fits, create a new one
+            if (!assignedRoundId) {
+                const newRoundId = (0, crypto_1.randomUUID)();
+                const newRound = { id: newRoundId, roundNumber: nextRoundNum++, busyPlayerIds: new Set([m.white_player_id, m.black_player_id]), matchIds: [m.id] };
+                allRounds.push(newRound);
+                assignedRoundId = newRoundId;
+            }
+            if (assignedRoundId !== m.round_id) {
+                updates.push({ matchId: m.id, newRoundId: assignedRoundId });
+            }
+        });
+        // 6. Delete all old BYE matches
+        await db_1.db.execute({ sql: "DELETE FROM matches WHERE tournament_id = ? AND (is_bye = 1 OR black_player_id = 'BYE')", args: [id] });
+        // 7. Apply match round updates
+        for (const u of updates) {
+            await db_1.db.execute({ sql: 'UPDATE matches SET round_id = ? WHERE id = ?', args: [u.newRoundId, u.matchId] });
+        }
+        // 8. Insert newly created rounds if any
+        const existingRoundIds = new Set(roundsRes.rows.map((r) => r.id));
+        for (const r of allRounds) {
+            if (!existingRoundIds.has(r.id)) {
+                await db_1.db.execute({
+                    sql: 'INSERT INTO rounds (id, tournament_id, round_number, status) VALUES (?, ?, ?, ?)',
+                    args: [r.id, id, r.roundNumber, 'pending']
+                });
+            }
+        }
+        // 9. Delete empty rounds
+        const roundsToDelete = allRounds.filter(r => r.matchIds.length === 0);
+        for (const r of roundsToDelete) {
+            await db_1.db.execute({ sql: 'DELETE FROM rounds WHERE id = ?', args: [r.id] });
+        }
+        const finalRounds = allRounds.filter(r => r.matchIds.length > 0).sort((a, b) => a.roundNumber - b.roundNumber);
+        // 10. Renumber rounds sequentially to avoid gaps
+        for (let i = 0; i < finalRounds.length; i++) {
+            const correctNum = i + 1;
+            if (finalRounds[i].roundNumber !== correctNum) {
+                await db_1.db.execute({ sql: 'UPDATE rounds SET round_number = ? WHERE id = ?', args: [correctNum, finalRounds[i].id] });
+                finalRounds[i].roundNumber = correctNum;
+            }
+        }
+        // 11. Regenerate BYE matches for final rounds
+        const playersRes = await db_1.db.execute({ sql: 'SELECT id FROM players WHERE tournament_id = ?', args: [id] });
+        const playerIds = playersRes.rows.map((p) => p.id);
+        for (const r of finalRounds) {
+            for (const pId of playerIds) {
+                if (!r.busyPlayerIds.has(pId)) {
+                    await db_1.db.execute({
+                        sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id, is_bye) VALUES (?, ?, ?, ?, ?, 1)',
+                        args: [(0, crypto_1.randomUUID)(), id, r.id, pId, 'BYE']
+                    });
+                }
+            }
+        }
+        res.json({ success: true, message: 'Rounds compressed successfully' });
+    }
+    catch (error) {
+        console.error('Error compressing rounds:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
 // 5.5. Reset/Re-draw tournament (clears matches/rounds, sets status back to 'created')
 app.post('/api/tournaments/:id/reset', async (req, res) => {
     const { id } = req.params;

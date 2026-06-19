@@ -18,7 +18,8 @@ import {
   Check,
   RotateCcw,
   Download,
-  Upload
+  Upload,
+  RefreshCw
 } from 'lucide-react';
 
 interface Tournament {
@@ -326,6 +327,26 @@ export default function App() {
       fetchTournaments();
     } catch (err) {
       console.error('Error resetting tournament:', err);
+    }
+  };
+
+  // Compress Rounds (fix extra rounds mid-tournament)
+  const handleCompressRounds = async () => {
+    if (!selectedTournamentId) return;
+    if (!confirm('¿Estás seguro de que deseas ajustar y comprimir las rondas? Esto reorganizará los emparejamientos pendientes para rellenar rondas vacías. No afectará a los partidos que ya tienen un resultado asignado.')) return;
+    try {
+      const res = await fetch(`/api/tournaments/${selectedTournamentId}/compress-rounds`, {
+        method: 'POST',
+        headers: { 'x-admin-key': adminKey }
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        alert(errData.error || 'Error al comprimir las rondas');
+        return;
+      }
+      fetchTournamentDetails(selectedTournamentId);
+    } catch (err) {
+      console.error('Error compressing rounds:', err);
     }
   };
 
@@ -737,6 +758,21 @@ export default function App() {
                                 </button>
                               </div>
                             </form>
+
+                            <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                                <strong>Ajustar Rondas:</strong> Reorganiza las partidas pendientes para eliminar rondas vacías (útil si agregaste jugadores recientemente). No afecta resultados ya guardados.
+                              </span>
+                              <button 
+                                className="btn btn-secondary" 
+                                onClick={handleCompressRounds}
+                                style={{ width: '100%', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}
+                              >
+                                <RefreshCw size={18} /> Ajustar Rondas
+                              </button>
+                            </div>
 
                             <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
 
