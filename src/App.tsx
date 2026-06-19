@@ -7,7 +7,6 @@ import {
   ChevronLeft, 
   Play, 
   CheckCircle, 
-  Trash2, 
   UserPlus, 
   Hourglass,
   Award,
@@ -195,35 +194,6 @@ export default function App() {
       console.error('Error creating tournament:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Delete tournament
-  const handleDeleteTournament = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const savedKey = localStorage.getItem(`admin_key_${id}`);
-    const key = prompt(
-      'Para eliminar este torneo, introduce la clave de administración:', 
-      savedKey || ''
-    );
-    if (!key) return;
-
-    try {
-      const res = await fetch(`/api/tournaments/${id}`, { 
-        method: 'DELETE',
-        headers: { 'x-admin-key': key }
-      });
-      if (!res.ok) {
-        alert('Clave de administración incorrecta. No se pudo eliminar.');
-        return;
-      }
-      localStorage.removeItem(`admin_key_${id}`);
-      fetchTournaments();
-      if (selectedTournamentId === id) {
-        setSelectedTournamentId(null);
-      }
-    } catch (err) {
-      console.error('Error deleting tournament:', err);
     }
   };
 
@@ -421,9 +391,6 @@ export default function App() {
                     </div>
                     <div className="tournament-card-footer">
                       <span>{t.type === 'single' ? 'Una Vuelta (Ida)' : 'Doble Vuelta (Ida/Vuelta)'}</span>
-                      <button className="btn btn-danger" style={{ padding: '0.4rem' }} onClick={(e) => handleDeleteTournament(t.id, e)}>
-                        <Trash2 size={16} />
-                      </button>
                     </div>
                   </div>
                 ))}
