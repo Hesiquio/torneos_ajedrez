@@ -14,7 +14,8 @@ export default function PublicLobby() {
     <div className="layout-container">
       <header className="main-header">
         <div className="header-content">
-          <div className="brand">
+          <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Link to="/" className="btn btn-secondary" style={{ padding: '0.5rem' }}>←</Link>
             <Trophy className="brand-icon" size={32} />
             <div>
               <h1 className="brand-title">Lobby Público</h1>

@@ -90,7 +90,16 @@ app.post('/api/tournaments/:id/verify-admin', async (req, res) => {
         return res.status(403).json({ error: 'Clave incorrecta.' });
     res.json({ ok: true });
 });
-// ================= CLUBS (SUPER ADMIN) =================
+// ================= CLUBS (PUBLIC & SUPER ADMIN) =================
+app.get('/api/clubs', async (req, res) => {
+    try {
+        const result = await db_1.db.execute('SELECT id, name FROM clubs ORDER BY created_at DESC');
+        res.json(result.rows);
+    }
+    catch (e) {
+        res.status(500).json({ error: 'DB Error' });
+    }
+});
 app.get('/api/admin/clubs', verifyGlobalAdmin, async (req, res) => {
     if (req.user.role !== 'SUPER_ADMIN')
         return res.status(403).json({ error: 'Forbidden' });
