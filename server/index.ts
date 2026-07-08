@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { db } from './db';
 import { generateNextRound, calculateSwissStandings } from './swiss';
 
@@ -10,19 +12,67 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-chess-key';
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../dist')));
 }
 
+// ================= AUTHENTICATION & MIDDLEWARE =================
+
+app.post('/api/admin/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Faltan credenciales' });
+
+  try {
+    const result = await db.execute({
+      sql: 'SELECT id, username, password_hash, role, club_id FROM users WHERE username = ?',
+      args: [username]
+    });
+
+    if (result.rows.length === 0) return res.status(401).json({ error: 'Credenciales inválidas' });
+    
+    const user = result.rows[0] as any;
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) return res.status(401).json({ error: 'Credenciales inválidas' });
+
+    const token = jwt.sign({ id: user.id, role: user.role, clubId: user.club_id }, JWT_SECRET, { expiresIn: '12h' });
+    res.json({ token, user: { id: user.id, username: user.username, role: user.role, clubId: user.club_id } });
+  } catch(e) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+function verifyGlobalAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No autorizado' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    (req as any).user = decoded;
+    next();
+  } catch(e) {
+    res.status(401).json({ error: 'Token inválido' });
+  }
+}
+
 async function verifyTournamentAdminKey(tournamentId: string, req: express.Request): Promise<boolean> {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      if (decoded.role === 'SUPER_ADMIN') return true;
+      if (decoded.role === 'CLUB_ADMIN') {
+        const tResult = await db.execute({ sql: 'SELECT club_id FROM tournaments WHERE id = ?', args: [tournamentId] });
+        if (tResult.rows.length > 0 && tResult.rows[0].club_id === decoded.clubId) return true;
+      }
+    } catch(e) {}
+  }
+
   const providedKey = req.headers['x-admin-key'] || req.body.adminKey;
   if (!providedKey) return false;
   try {
-    const result = await db.execute({
-      sql: 'SELECT admin_key FROM tournaments WHERE id = ?',
-      args: [tournamentId]
-    });
+    const result = await db.execute({ sql: 'SELECT admin_key FROM tournaments WHERE id = ?', args: [tournamentId] });
     if (result.rows.length === 0) return false;
     return result.rows[0].admin_key === providedKey;
   } catch (e) {
@@ -37,11 +87,29 @@ app.post('/api/tournaments/:id/verify-admin', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ================= PLAYERS (GLOBAL) =================
+// ================= CLUBS (SUPER ADMIN) =================
+app.get('/api/admin/clubs', verifyGlobalAdmin, async (req, res) => {
+  if ((req as any).user.role !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const result = await db.execute('SELECT * FROM clubs ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch(e) {
+    res.status(500).json({ error: 'DB Error' });
+  }
+});
+
+// ================= PLAYERS =================
 
 app.get('/api/players', async (req, res) => {
   try {
-    const result = await db.execute('SELECT * FROM players ORDER BY grand_prix_points DESC, name ASC');
+    const clubId = req.query.club_id;
+    let sql = 'SELECT * FROM players WHERE club_id IS NULL ORDER BY grand_prix_points DESC, name ASC';
+    let args: any[] = [];
+    if (clubId && clubId !== 'null') {
+      sql = 'SELECT * FROM players WHERE club_id = ? ORDER BY grand_prix_points DESC, name ASC';
+      args = [clubId];
+    }
+    const result = await db.execute({ sql, args });
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
@@ -49,29 +117,54 @@ app.get('/api/players', async (req, res) => {
 });
 
 app.post('/api/players', async (req, res) => {
-  const { name, age } = req.body;
+  const { name, age, clubId } = req.body;
   if (!name || name.trim() === '') return res.status(400).json({ error: 'Player name is required' });
   try {
     const id = randomUUID();
     await db.execute({
-      sql: 'INSERT INTO players (id, name, age) VALUES (?, ?, ?)',
-      args: [id, name.trim(), age ? parseInt(age) : null]
+      sql: 'INSERT INTO players (id, club_id, name, age) VALUES (?, ?, ?, ?)',
+      args: [id, clubId || null, name.trim(), age ? parseInt(age) : null]
     });
-    res.json({ id, name: name.trim(), age, grand_prix_points: 0 });
+    res.json({ id, club_id: clubId || null, name: name.trim(), age, grand_prix_points: 0 });
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-app.put('/api/players/:id', async (req, res) => {
+app.put('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
   const { id } = req.params;
-  const { name, age } = req.body;
+  const { name, age, grand_prix_points } = req.body;
   if (!name || name.trim() === '') return res.status(400).json({ error: 'Player name is required' });
   try {
+    const pResult = await db.execute({ sql: 'SELECT club_id FROM players WHERE id = ?', args: [id] });
+    if (pResult.rows.length === 0) return res.status(404).json({ error: 'Player not found' });
+    
+    const user = (req as any).user;
+    if (user.role === 'CLUB_ADMIN' && pResult.rows[0].club_id !== user.clubId) {
+       return res.status(403).json({ error: 'Forbidden' });
+    }
+
     await db.execute({
-      sql: 'UPDATE players SET name = ?, age = ? WHERE id = ?',
-      args: [name.trim(), age ? parseInt(age) : null, id]
+      sql: 'UPDATE players SET name = ?, age = ?, grand_prix_points = ? WHERE id = ?',
+      args: [name.trim(), age ? parseInt(age) : null, grand_prix_points !== undefined ? parseFloat(grand_prix_points) : 0, id]
     });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.delete('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const pResult = await db.execute({ sql: 'SELECT club_id FROM players WHERE id = ?', args: [id] });
+    if (pResult.rows.length === 0) return res.status(404).json({ error: 'Player not found' });
+    
+    const user = (req as any).user;
+    if (user.role === 'CLUB_ADMIN' && pResult.rows[0].club_id !== user.clubId) {
+       return res.status(403).json({ error: 'Forbidden' });
+    }
+    await db.execute({ sql: 'DELETE FROM players WHERE id = ?', args: [id] });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
@@ -82,11 +175,24 @@ app.put('/api/players/:id', async (req, res) => {
 
 app.get('/api/tournaments', async (req, res) => {
   try {
+    const clubId = req.query.club_id;
     const showArchived = req.query.archived === 'true';
-    const sql = showArchived
-      ? "SELECT id, name, status, total_rounds, created_at FROM tournaments WHERE status = 'archived' ORDER BY created_at DESC"
-      : "SELECT id, name, status, total_rounds, created_at FROM tournaments WHERE status != 'archived' ORDER BY created_at DESC";
-    const result = await db.execute(sql);
+    
+    let sql = '';
+    let args: any[] = [];
+
+    if (clubId && clubId !== 'null') {
+      sql = showArchived
+        ? "SELECT id, name, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id = ? AND status = 'archived' ORDER BY created_at DESC"
+        : "SELECT id, name, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id = ? AND status != 'archived' ORDER BY created_at DESC";
+      args = [clubId];
+    } else {
+      sql = showArchived
+        ? "SELECT id, name, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id IS NULL AND status = 'archived' ORDER BY created_at DESC"
+        : "SELECT id, name, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id IS NULL AND status != 'archived' ORDER BY created_at DESC";
+    }
+
+    const result = await db.execute({ sql, args });
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
@@ -94,18 +200,19 @@ app.get('/api/tournaments', async (req, res) => {
 });
 
 app.post('/api/tournaments', async (req, res) => {
-  const { name, totalRounds, adminKey } = req.body;
+  const { name, totalRounds, adminKey, clubId, isGrandPrix } = req.body;
   if (!name || !adminKey || adminKey.trim() === '') {
     return res.status(400).json({ error: 'Invalid name or admin key' });
   }
   const rounds = parseInt(totalRounds) || 5;
   const id = randomUUID();
+  const grandPrix = isGrandPrix === undefined ? 1 : (isGrandPrix ? 1 : 0);
   try {
     await db.execute({
-      sql: 'INSERT INTO tournaments (id, name, status, total_rounds, admin_key) VALUES (?, ?, ?, ?, ?)',
-      args: [id, name, 'created', rounds, adminKey.trim()]
+      sql: 'INSERT INTO tournaments (id, club_id, name, status, total_rounds, is_grand_prix, admin_key) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [id, clubId || null, name, 'created', rounds, grandPrix, adminKey.trim()]
     });
-    res.json({ id, name, status: 'created', total_rounds: rounds });
+    res.json({ id, name, status: 'created', total_rounds: rounds, is_grand_prix: grandPrix, club_id: clubId || null });
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
   }
@@ -115,7 +222,7 @@ app.get('/api/tournaments/:id', async (req, res) => {
   const { id } = req.params;
   try {
     const tResult = await db.execute({
-      sql: 'SELECT id, name, status, total_rounds, created_at FROM tournaments WHERE id = ?',
+      sql: 'SELECT id, club_id, name, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE id = ?',
       args: [id]
     });
     if (tResult.rows.length === 0) return res.status(404).json({ error: 'Tournament not found' });
@@ -304,6 +411,9 @@ app.post('/api/tournaments/:id/complete', async (req, res) => {
   try {
     if (!(await verifyTournamentAdminKey(id, req))) return res.status(403).json({ error: 'Unauthorized' });
 
+    const tRes = await db.execute({ sql: 'SELECT * FROM tournaments WHERE id = ?', args: [id] });
+    const tournament = tRes.rows[0] as any;
+
     await db.execute({ sql: "UPDATE tournaments SET status = 'completed' WHERE id = ?", args: [id] });
 
     const pResult = await db.execute({ sql: 'SELECT player_id FROM tournament_participants WHERE tournament_id = ?', args: [id] });
@@ -319,16 +429,18 @@ app.post('/api/tournaments/:id/complete', async (req, res) => {
 
     const swissStandings = calculateSwissStandings(rResult.rows.length, participants, matchHistory);
     
-    const gpPointsMap = [10, 8, 6, 4, 2];
-
-    for (let i = 0; i < swissStandings.length; i++) {
-      const pid = swissStandings[i].id;
-      const pointsToAward = i < gpPointsMap.length ? gpPointsMap[i] : 1;
-      
-      await db.execute({
-        sql: 'UPDATE players SET grand_prix_points = grand_prix_points + ? WHERE id = ?',
-        args: [pointsToAward, pid]
-      });
+    // Solo repartimos puntos GP si el torneo pertenece a un club y está marcado como Grand Prix
+    if (tournament.club_id && tournament.is_grand_prix === 1) {
+      const gpPointsMap = [10, 8, 6, 4, 2];
+      for (let i = 0; i < swissStandings.length; i++) {
+        const pid = swissStandings[i].id;
+        const pointsToAward = i < gpPointsMap.length ? gpPointsMap[i] : 1;
+        
+        await db.execute({
+          sql: 'UPDATE players SET grand_prix_points = grand_prix_points + ? WHERE id = ?',
+          args: [pointsToAward, pid]
+        });
+      }
     }
 
     res.json({ success: true });

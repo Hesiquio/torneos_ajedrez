@@ -12,25 +12,52 @@ async function init() {
         await db_1.db.execute('DROP TABLE IF EXISTS tournament_participants;');
         await db_1.db.execute('DROP TABLE IF EXISTS players;');
         await db_1.db.execute('DROP TABLE IF EXISTS tournaments;');
+        await db_1.db.execute('DROP TABLE IF EXISTS users;');
+        await db_1.db.execute('DROP TABLE IF EXISTS clubs;');
+        // Clubs table
+        await db_1.db.execute(`
+      CREATE TABLE IF NOT EXISTS clubs (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+        // Users (Admins) table
+        await db_1.db.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL, -- 'SUPER_ADMIN' or 'CLUB_ADMIN'
+        club_id TEXT, -- NULL for SUPER_ADMIN
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
+      );
+    `);
         // Tournaments table
         await db_1.db.execute(`
       CREATE TABLE IF NOT EXISTS tournaments (
         id TEXT PRIMARY KEY,
+        club_id TEXT, -- NULL para torneos libres/públicos
         name TEXT NOT NULL,
         status TEXT NOT NULL, -- 'created', 'in_progress', 'completed', 'archived'
         total_rounds INTEGER NOT NULL DEFAULT 5, -- number of swiss rounds
+        is_grand_prix INTEGER DEFAULT 1, -- 1 = yes, 0 = no
         admin_key TEXT NOT NULL, -- password to edit
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
       );
     `);
-        // Global Players table
+        // Global Players table (per club, or null for transient public players)
         await db_1.db.execute(`
       CREATE TABLE IF NOT EXISTS players (
         id TEXT PRIMARY KEY,
+        club_id TEXT, -- NULL para jugadores de torneos libres
         name TEXT NOT NULL,
         age INTEGER, -- Edad del jugador
         grand_prix_points REAL DEFAULT 0, -- Puntos totales de la liga
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
       );
     `);
         // Tournament Participants table (Many-to-Many)
