@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { fetchApi } from '../api';
-import { Trophy, Swords, Crown, ChevronLeft, Calendar, History } from 'lucide-react';
+import { Trophy, Swords, Crown, ChevronLeft, Calendar, History, Settings } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 
 export default function ClubLobby() {
   const { clubId } = useParams();
+  const [club, setClub] = useState<any>(null);
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
+    fetchApi('/clubs').then((clubs: any[]) => {
+      const c = clubs.find((x: any) => x.id === clubId);
+      if (c) setClub(c);
+    }).catch(console.error);
     fetchApi(`/tournaments?club_id=${clubId}`).then(setTournaments).catch(console.error);
     fetchApi(`/players?club_id=${clubId}`).then(setPlayers).catch(console.error);
     fetchApi(`/clubs/${clubId}/history`).then(setHistory).catch(console.error);
@@ -23,10 +28,13 @@ export default function ClubLobby() {
             <Link to="/" className="btn btn-secondary" style={{ padding: '0.6rem' }}><ChevronLeft size={20} /></Link>
             <Trophy className="brand-icon" size={36} />
             <div>
-              <h1 className="brand-title">Lobby del Club</h1>
+              <h1 className="brand-title">{club?.name || 'Lobby del Club'}</h1>
               <p className="brand-subtitle">Torneos Oficiales Grand Prix</p>
             </div>
           </div>
+          <Link to={`/admin/club/${clubId}`} className="btn btn-secondary" style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', opacity: 0.5 }} title="Panel de Administrador">
+            <Settings size={16} />
+          </Link>
         </div>
       </header>
 
