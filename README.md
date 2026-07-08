@@ -1,6 +1,6 @@
 # ChessLeague 👑 — Gestión de Torneos de Ajedrez
 
-> **Versión 1.1.0 — "Rey de Tablas"** · Versión estable 🟢
+> **Versión 1.1.0 — "Rey de Tablas"** · Versión estable (Final v1) 🟢
 
 Una aplicación web moderna y premium para la administración y visualización de torneos de ajedrez estilo **Liga Round Robin**. Permite gestionar emparejamientos con colores balanceados, registrar resultados en tiempo real, compartir torneos públicamente y mantener una clasificación oficial con desempate Sonneborn-Berger.
 
