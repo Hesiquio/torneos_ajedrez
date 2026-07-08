@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchApi, logout } from '../api';
 import { useNavigate, Link } from 'react-router-dom';
+import { LogOut, Plus, Shield, Users, Globe } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
   const [clubs, setClubs] = useState<any[]>([]);
@@ -54,40 +55,56 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="layout-container">
-      <header className="main-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <h1 className="brand-title">Super Admin Dashboard</h1>
-        <button className="btn btn-secondary" onClick={handleLogout}>Cerrar Sesión</button>
+      <header className="main-header">
+        <div className="header-content">
+          <div className="brand">
+            <Shield className="brand-icon" size={32} />
+            <div>
+              <h1 className="brand-title" style={{ fontSize: '1.5rem' }}>Super Admin</h1>
+              <p className="brand-subtitle">Centro de Control Global</p>
+            </div>
+          </div>
+          <button className="btn btn-secondary" onClick={handleLogout}><LogOut size={18} /> Cerrar Sesión</button>
+        </div>
       </header>
 
-      <main className="main-content" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1 }}>
-          <div className="card-panel">
-            <h2>Clubes Registrados</h2>
-            <ul>
-              {clubs.map(c => (
-                <li key={c.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ddd' }}>
-                  <strong>{c.name}</strong>
-                  <br />
-                  <Link to={`/club/${c.id}`} style={{ color: 'var(--color-primary)' }}>Ver Lobby</Link>
-                </li>
-              ))}
-            </ul>
+      <main className="main-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+        
+        <div className="card-panel">
+          <h2 className="card-title"><Users size={24} color="var(--color-primary)" /> Clubes Oficiales</h2>
+          <div className="table-wrapper">
+            <table className="standings-table">
+              <thead><tr><th>Nombre del Club</th><th>Acción</th></tr></thead>
+              <tbody>
+                {clubs.map(c => (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight: '500' }}>{c.name}</td>
+                    <td><Link to={`/club/${c.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>Entrar al Lobby</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <div style={{ flex: 1 }}>
-          <div className="card-panel">
-            <h2>Torneos Públicos (Libres)</h2>
-            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} style={{ marginBottom: '1rem' }}>+ Crear Torneo Libre</button>
-            <ul>
-              {publicTournaments.map(t => (
-                <li key={t.id} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #ddd' }}>
-                  <strong>{t.name}</strong> - {t.status}
-                  <br />
-                  <Link to={`/tournament/${t.id}`} style={{ color: 'var(--color-primary)' }}>Ver Torneo</Link>
-                </li>
-              ))}
-            </ul>
+        <div className="card-panel">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
+            <h2 className="card-title" style={{ borderBottom: 'none', margin: 0, padding: 0 }}><Globe size={24} color="var(--color-info)" /> Torneos Libres</h2>
+            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}><Plus size={16} /> Crear Nuevo</button>
+          </div>
+          <div className="table-wrapper">
+            <table className="standings-table">
+              <thead><tr><th>Torneo</th><th>Estado</th><th>Acción</th></tr></thead>
+              <tbody>
+                {publicTournaments.map(t => (
+                  <tr key={t.id}>
+                    <td style={{ fontWeight: '500' }}>{t.name}</td>
+                    <td><span className={`status-badge status-${t.status}`}>{t.status}</span></td>
+                    <td><Link to={`/tournament/${t.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>Administrar</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </main>
@@ -95,23 +112,24 @@ export default function SuperAdminDashboard() {
       {showCreateModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3 className="modal-title">Crear Torneo Libre</h3>
+            <h3 className="modal-title" style={{ marginBottom: '1.5rem' }}>Crear Torneo Libre</h3>
             <form onSubmit={handleCreateTournament}>
               <div className="form-group">
                 <label className="form-label">Nombre del Torneo</label>
                 <input type="text" className="input-text" required value={newTournamentName} onChange={e => setNewTournamentName(e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">Número de Rondas</label>
+                <label className="form-label">Número de Rondas Suizas</label>
                 <input type="number" className="input-text" min="1" max="15" required value={newTournamentRounds} onChange={e => setNewTournamentRounds(parseInt(e.target.value))} />
               </div>
               <div className="form-group">
-                <label className="form-label">Clave de Árbitro</label>
+                <label className="form-label">Clave de Árbitro (Temporal)</label>
                 <input type="password" className="input-text" required value={newTournamentAdminKey} onChange={e => setNewTournamentAdminKey(e.target.value)} />
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.5rem' }}>Aunque la configures, como Super Admin podrás entrar directamente.</p>
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">Crear</button>
+                <button type="submit" className="btn btn-primary">Crear Torneo</button>
               </div>
             </form>
           </div>

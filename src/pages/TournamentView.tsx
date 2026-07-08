@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchApi } from '../api';
-import { Lock, Unlock, ArrowLeft, RefreshCw, Check, CheckSquare } from 'lucide-react';
+import { Lock, Unlock, ChevronLeft, RefreshCw, Check, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 export default function TournamentView() {
   const { id } = useParams();
@@ -76,7 +76,7 @@ export default function TournamentView() {
     }
   }
 
-  if (!data) return <div>Loading...</div>;
+  if (!data) return <div className="layout-container" style={{ justifyContent: 'center', alignItems: 'center' }}>Cargando Torneo...</div>;
 
   const t = data.tournament;
   const currentRound = data.rounds.length > 0 ? data.rounds[data.rounds.length - 1] : null;
@@ -91,109 +91,149 @@ export default function TournamentView() {
 
   return (
     <div className="layout-container">
-      <header className="main-header" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-        <Link to={t.club_id ? `/club/${t.club_id}` : '/'} className="btn btn-secondary">
-          <ArrowLeft size={18} /> Volver
-        </Link>
-        <div>
-          <h1 className="brand-title">{t.name}</h1>
-          <p className="brand-subtitle">{t.is_grand_prix === 1 ? 'Oficial Grand Prix' : 'Torneo Libre'}</p>
-        </div>
-        <div style={{ marginLeft: 'auto' }}>
-          {!isAdminUnlocked ? (
-            <form onSubmit={handleUnlock} style={{ display: 'flex', gap: '0.5rem' }}>
-              <input type="password" placeholder="Clave..." className="input-text" value={adminKey} onChange={e => setAdminKey(e.target.value)} />
-              <button type="submit" className="btn btn-primary"><Unlock size={16} /></button>
-            </form>
-          ) : (
-            <span className="status-badge" style={{ backgroundColor: 'var(--color-accent-green)', color: '#fff' }}><Lock size={16} /> Árbitro Activo</span>
-          )}
+      <header className="main-header">
+        <div className="header-content">
+          <div className="brand">
+            <Link to={t.club_id ? `/club/${t.club_id}` : '/public'} className="btn btn-secondary" style={{ padding: '0.6rem' }}>
+              <ChevronLeft size={20} />
+            </Link>
+            <div>
+              <h1 className="brand-title" style={{ fontSize: '1.5rem' }}>{t.name}</h1>
+              <p className="brand-subtitle">{t.is_grand_prix === 1 ? 'Oficial Grand Prix' : 'Torneo Libre'} &bull; {t.total_rounds} Rondas</p>
+            </div>
+          </div>
+          <div style={{ marginLeft: 'auto' }}>
+            {!isAdminUnlocked ? (
+              <form onSubmit={handleUnlock} style={{ display: 'flex', gap: '0.5rem' }}>
+                <input type="password" placeholder="Clave de Árbitro" className="input-text" style={{ padding: '0.5rem 1rem', width: '200px' }} value={adminKey} onChange={e => setAdminKey(e.target.value)} />
+                <button type="submit" className="btn btn-primary" title="Desbloquear panel"><Unlock size={18} /></button>
+              </form>
+            ) : (
+              <span className="status-badge" style={{ background: 'rgba(16, 185, 129, 0.2)', color: 'var(--color-success)', border: '1px solid var(--color-success)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ShieldCheck size={16} /> Árbitro Activo
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
-      <main className="main-content">
-        {t.status === 'created' ? (
-          <div className="card-panel">
-            <h2>Check-in de Jugadores</h2>
-            <div className="tournament-grid">
-              {allPlayers.map(p => (
-                <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
-                  <input type="checkbox" checked={selectedPlayerIds.has(p.id)} onChange={(e) => {
-                    const newSet = new Set(selectedPlayerIds);
-                    e.target.checked ? newSet.add(p.id) : newSet.delete(p.id);
-                    setSelectedPlayerIds(newSet);
-                  }} disabled={!isAdminUnlocked} />
-                  {p.name}
-                </label>
-              ))}
+      <main className="main-content" style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap' }}>
+        
+        {/* Left Side: Controls & Standings */}
+        <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          
+          {isAdminUnlocked && t.status === 'in_progress' && (
+            <div className="card-panel" style={{ border: '1px solid var(--color-primary)', background: 'linear-gradient(180deg, rgba(226,184,92,0.05), transparent)' }}>
+              <h2 className="card-title" style={{ fontSize: '1.25rem', borderColor: 'rgba(226,184,92,0.2)', color: 'var(--color-primary)' }}>
+                <AlertTriangle size={20} /> Controles del Árbitro
+              </h2>
+              {currentRound?.round_number < t.total_rounds ? (
+                <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }} disabled={!isCurrentRoundCompleted} onClick={() => handleAction('next-round')}>
+                  <RefreshCw size={20} /> Generar Ronda {currentRound.round_number + 1}
+                </button>
+              ) : (
+                <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', background: 'var(--color-success)' }} disabled={!isCurrentRoundCompleted} onClick={() => handleAction('complete')}>
+                  <Check size={20} /> Finalizar Torneo
+                </button>
+              )}
+              {!isCurrentRoundCompleted && (
+                <p style={{ marginTop: '1rem', color: 'var(--color-text-secondary)', fontSize: '0.85rem', textAlign: 'center' }}>
+                  Faltan partidas por reportar en la ronda actual.
+                </p>
+              )}
             </div>
-            {isAdminUnlocked && (
-              <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
-                <button className="btn btn-secondary" onClick={() => handleAction('checkin', { playerIds: Array.from(selectedPlayerIds) })}>Guardar Check-in</button>
-                <button className="btn btn-primary" onClick={() => handleAction('start')}>Iniciar Torneo</button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '300px' }}>
-              <div className="card-panel">
-                <h2>Clasificación (Suizo)</h2>
-                <table className="standings-table">
-                  <thead><tr><th>#</th><th>Jugador</th><th>Pts</th><th>Buchholz</th></tr></thead>
-                  <tbody>
-                    {data.standings.map((s:any, idx:number) => (
-                      <tr key={s.id}><td>{idx + 1}</td><td>{s.name}</td><td>{s.points}</td><td>{s.sb}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          )}
 
-              {isAdminUnlocked && t.status === 'in_progress' && (
-                <div className="card-panel" style={{ marginTop: '1rem' }}>
-                  {currentRound?.round_number < t.total_rounds ? (
-                    <button className="btn btn-primary" style={{ width: '100%' }} disabled={!isCurrentRoundCompleted} onClick={() => handleAction('next-round')}>
-                      Generar Ronda {currentRound.round_number + 1}
-                    </button>
-                  ) : (
-                    <button className="btn btn-primary" style={{ width: '100%' }} disabled={!isCurrentRoundCompleted} onClick={() => handleAction('complete')}>
-                      Finalizar Torneo
-                    </button>
-                  )}
+          <div className="card-panel">
+            <h2 className="card-title" style={{ fontSize: '1.35rem' }}>Tabla de Posiciones</h2>
+            <div className="table-wrapper">
+              <table className="standings-table">
+                <thead><tr><th>Pos</th><th>Jugador</th><th>Pts</th><th>BUCH</th></tr></thead>
+                <tbody>
+                  {data.standings.map((s:any, idx:number) => (
+                    <tr key={s.id}>
+                      <td style={{ fontWeight: 'bold' }}>{idx + 1}</td>
+                      <td>{s.name}</td>
+                      <td style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>{s.points}</td>
+                      <td style={{ color: 'var(--color-text-secondary)' }}>{s.sb}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Matches / Check-in */}
+        <div style={{ flex: 1.5, minWidth: '320px' }}>
+          {t.status === 'created' ? (
+            <div className="card-panel">
+              <h2 className="card-title">Inscripción (Check-in)</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+                {allPlayers.map(p => (
+                  <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-light)', cursor: isAdminUnlocked ? 'pointer' : 'default' }}>
+                    <input type="checkbox" checked={selectedPlayerIds.has(p.id)} onChange={(e) => {
+                      const newSet = new Set(selectedPlayerIds);
+                      e.target.checked ? newSet.add(p.id) : newSet.delete(p.id);
+                      setSelectedPlayerIds(newSet);
+                    }} disabled={!isAdminUnlocked} style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)' }} />
+                    <span style={{ fontSize: '1.1rem' }}>{p.name}</span>
+                  </label>
+                ))}
+              </div>
+              {isAdminUnlocked && (
+                <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid var(--border-light)', paddingTop: '1.5rem' }}>
+                  <button className="btn btn-secondary" onClick={() => handleAction('checkin', { playerIds: Array.from(selectedPlayerIds) })}>
+                    Guardar Selección
+                  </button>
+                  <button className="btn btn-primary" onClick={() => handleAction('start')}>
+                    <Trophy size={18} /> Iniciar Ronda 1
+                  </button>
                 </div>
               )}
             </div>
-
-            <div style={{ flex: 1.5, minWidth: '300px' }}>
-              <div className="card-panel">
-                <h2>Ronda Actual ({currentRound?.round_number} de {t.total_rounds})</h2>
-                <div className="matches-list">
-                  {currentRoundMatches?.map((m:any) => (
-                    <div key={m.id} className="match-card">
-                      <div className="match-players">
-                        <div className="match-player">{m.white_player_name}</div>
-                        <div className="match-vs">vs</div>
-                        <div className="match-player">{m.black_player_name}</div>
+          ) : (
+            <div className="card-panel">
+              <h2 className="card-title" style={{ fontSize: '1.35rem' }}>
+                Emparejamientos &bull; Ronda {currentRound?.round_number} de {t.total_rounds}
+              </h2>
+              <div className="matches-list">
+                {currentRoundMatches?.map((m:any) => (
+                  <div key={m.id} className="match-card">
+                    <div className="match-players">
+                      <div className="match-player white">
+                        <span className="piece-icon white">♙</span> {m.white_player_name}
                       </div>
+                      <div className="match-vs">vs</div>
+                      <div className="match-player black">
+                        {m.black_player_name} <span className="piece-icon black">♟</span>
+                      </div>
+                    </div>
+                    <div style={{ borderTop: '1px solid var(--border-light)', margin: '0 -1.25rem', paddingTop: '1rem', paddingInline: '1.25rem' }}>
                       {isAdminUnlocked && m.is_bye === 0 && t.status === 'in_progress' ? (
                         <select className="result-select" value={m.result || 'pending'} onChange={(e) => handleResult(m.id, e.target.value)}>
-                          <option value="pending">Pendiente...</option>
-                          <option value="1-0">Gana Blancas</option>
-                          <option value="0-1">Gana Negras</option>
-                          <option value="0.5-0.5">Tablas</option>
+                          <option value="pending" disabled hidden>Seleccionar Resultado...</option>
+                          <option value="1-0">Ganan Blancas (1-0)</option>
+                          <option value="0-1">Ganan Negras (0-1)</option>
+                          <option value="0.5-0.5">Tablas (½-½)</option>
                         </select>
                       ) : (
                         <div className="match-result-badge">
-                          {m.is_bye === 1 ? 'Descanso' : m.result || 'Pendiente'}
+                          {m.is_bye === 1 ? 'Descanso Automático (Bye)' : 
+                           m.result === '1-0' ? 'Victoria Blancas (1 - 0)' :
+                           m.result === '0-1' ? 'Victoria Negras (0 - 1)' :
+                           m.result === '0.5-0.5' ? 'Tablas (½ - ½)' :
+                           'Partida en curso...'}
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
       </main>
     </div>
   );
