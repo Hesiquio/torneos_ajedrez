@@ -7,7 +7,8 @@ export default function PublicLobby() {
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTournamentName, setNewTournamentName] = useState('');
-  const [newTournamentRounds, setNewTournamentRounds] = useState(5);
+  const [expectedPlayers, setExpectedPlayers] = useState(8);
+  const [newTournamentRounds, setNewTournamentRounds] = useState(3);
   const [newTournamentAdminKey, setNewTournamentAdminKey] = useState('');
 
   useEffect(() => {
@@ -99,7 +100,17 @@ export default function PublicLobby() {
                 <input type="text" className="input-text" required value={newTournamentName} onChange={e => setNewTournamentName(e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">Número de Rondas Suizas</label>
+                <label className="form-label">Cantidad Esperada de Jugadores</label>
+                <input type="number" className="input-text" min="2" max="256" required value={expectedPlayers} onChange={e => {
+                  const val = parseInt(e.target.value);
+                  setExpectedPlayers(val);
+                  if (val > 1) {
+                    setNewTournamentRounds(Math.ceil(Math.log2(val)));
+                  }
+                }} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Número de Rondas Suizas (Sugerido)</label>
                 <input type="number" className="input-text" min="1" max="15" required value={newTournamentRounds} onChange={e => setNewTournamentRounds(parseInt(e.target.value))} />
               </div>
               <div className="form-group">
