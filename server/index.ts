@@ -87,23 +87,103 @@ app.post('/api/tournaments/:id/verify-admin', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ================= CLUBS (PUBLIC & SUPER ADMIN) =================
+// --- Clubs API ---
 app.get('/api/clubs', async (req, res) => {
   try {
-    const result = await db.execute('SELECT id, name FROM clubs ORDER BY created_at DESC');
-    res.json(result.rows);
-  } catch(e) {
-    res.status(500).json({ error: 'DB Error' });
+    const rs = await db.execute('SELECT * FROM clubs ORDER BY created_at DESC');
+    res.json(rs.rows);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
 app.get('/api/admin/clubs', verifyGlobalAdmin, async (req, res) => {
-  if ((req as any).user.role !== 'SUPER_ADMIN') return res.status(403).json({ error: 'Forbidden' });
   try {
-    const result = await db.execute('SELECT * FROM clubs ORDER BY created_at DESC');
-    res.json(result.rows);
-  } catch(e) {
-    res.status(500).json({ error: 'DB Error' });
+    const rs = await db.execute('SELECT * FROM clubs ORDER BY created_at DESC');
+    res.json(rs.rows);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/clubs', verifyGlobalAdmin, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    const id = randomUUID();
+    await db.execute({
+      sql: 'INSERT INTO clubs (id, name) VALUES (?, ?)',
+      args: [id, name]
+    });
+    res.json({ success: true, id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
+  try {
+    const { name } = req.body;
+    await db.execute({
+      sql: 'UPDATE clubs SET name = ? WHERE id = ?',
+      args: [name, req.params.id]
+    });
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
+  try {
+    // Delete players (this also avoids orphan players)
+    await db.execute({
+      sql: 'DELETE FROM players WHERE club_id = ?',
+      args: [req.params.id]
+    });
+    // Delete tournaments (which will theoretically leave orphan matches/rounds, so we delete those too)
+    const tRes = await db.execute({
+      sql: 'SELECT id FROM tournaments WHERE club_id = ?',
+      args: [req.params.id]
+    });
+    for (const row of tRes.rows) {
+      await db.execute({ sql: 'DELETE FROM matches WHERE tournament_id = ?', args: [row.id] });
+      await db.execute({ sql: 'DELETE FROM rounds WHERE tournament_id = ?', args: [row.id] });
+      await db.execute({ sql: 'DELETE FROM tournament_players WHERE tournament_id = ?', args: [row.id] });
+      await db.execute({ sql: 'DELETE FROM standings WHERE tournament_id = ?', args: [row.id] });
+    }
+    await db.execute({
+      sql: 'DELETE FROM tournaments WHERE club_id = ?',
+      args: [req.params.id]
+    });
+    
+    // Delete the club itself
+    await db.execute({
+      sql: 'DELETE FROM clubs WHERE id = ?',
+      args: [req.params.id]
+    });
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/clubs/:id/history', async (req, res) => {
+  try {
+    const rs = await db.execute({
+      sql: `SELECT m.*, t.name as tournament_name,
+            w.name as white_player_name, b.name as black_player_name
+            FROM matches m
+            JOIN tournaments t ON m.tournament_id = t.id
+            JOIN players w ON m.white_player_id = w.id
+            LEFT JOIN players b ON m.black_player_id = b.id
+            WHERE t.club_id = ? AND m.result IS NOT NULL
+            ORDER BY m.id DESC LIMIT 20`,
+      args: [req.params.id]
+    });
+    res.json(rs.rows);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 

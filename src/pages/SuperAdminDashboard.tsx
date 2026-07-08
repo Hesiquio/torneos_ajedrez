@@ -6,10 +6,15 @@ import { LogOut, Plus, Shield, Users, Globe } from 'lucide-react';
 export default function SuperAdminDashboard() {
   const [clubs, setClubs] = useState<any[]>([]);
   const [publicTournaments, setPublicTournaments] = useState<any[]>([]);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  
+  const [showCreateTournamentModal, setShowCreateTournamentModal] = useState(false);
   const [newTournamentName, setNewTournamentName] = useState('');
   const [newTournamentRounds, setNewTournamentRounds] = useState(5);
   const [newTournamentAdminKey, setNewTournamentAdminKey] = useState('');
+
+  const [showCreateClubModal, setShowCreateClubModal] = useState(false);
+  const [newClubName, setNewClubName] = useState('');
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,11 +51,22 @@ export default function SuperAdminDashboard() {
           isGrandPrix: false
         })
       });
-      setShowCreateModal(false);
+      setShowCreateTournamentModal(false);
       loadData();
-    } catch(err: any) {
-      alert(err.message);
-    }
+    } catch(err: any) { alert(err.message); }
+  }
+
+  async function handleCreateClub(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await fetchApi('/clubs', {
+        method: 'POST',
+        body: JSON.stringify({ name: newClubName })
+      });
+      setShowCreateClubModal(false);
+      setNewClubName('');
+      loadData();
+    } catch(err: any) { alert(err.message); }
   }
 
   return (
@@ -71,7 +87,10 @@ export default function SuperAdminDashboard() {
       <main className="main-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
         
         <div className="card-panel">
-          <h2 className="card-title"><Users size={24} color="var(--color-primary)" /> Clubes Oficiales</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
+            <h2 className="card-title" style={{ borderBottom: 'none', margin: 0, padding: 0 }}><Users size={24} color="var(--color-primary)" /> Clubes Oficiales</h2>
+            <button className="btn btn-primary" onClick={() => setShowCreateClubModal(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}><Plus size={16} /> Crear Club</button>
+          </div>
           <div className="table-wrapper">
             <table className="standings-table">
               <thead><tr><th>Nombre del Club</th><th>Acción</th></tr></thead>
@@ -79,7 +98,7 @@ export default function SuperAdminDashboard() {
                 {clubs.map(c => (
                   <tr key={c.id}>
                     <td style={{ fontWeight: '500' }}>{c.name}</td>
-                    <td><Link to={`/club/${c.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>Entrar al Lobby</Link></td>
+                    <td><Link to={`/admin/club/${c.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>Administrar Club</Link></td>
                   </tr>
                 ))}
               </tbody>
@@ -90,7 +109,7 @@ export default function SuperAdminDashboard() {
         <div className="card-panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
             <h2 className="card-title" style={{ borderBottom: 'none', margin: 0, padding: 0 }}><Globe size={24} color="var(--color-info)" /> Torneos Libres</h2>
-            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}><Plus size={16} /> Crear Nuevo</button>
+            <button className="btn btn-primary" onClick={() => setShowCreateTournamentModal(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}><Plus size={16} /> Crear Nuevo</button>
           </div>
           <div className="table-wrapper">
             <table className="standings-table">
@@ -109,7 +128,7 @@ export default function SuperAdminDashboard() {
         </div>
       </main>
 
-      {showCreateModal && (
+      {showCreateTournamentModal && (
         <div className="modal-overlay">
           <div className="modal-content">
             <h3 className="modal-title" style={{ marginBottom: '1.5rem' }}>Crear Torneo Libre</h3>
@@ -128,8 +147,26 @@ export default function SuperAdminDashboard() {
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.5rem' }}>Aunque la configures, como Super Admin podrás entrar directamente.</p>
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Cancelar</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateTournamentModal(false)}>Cancelar</button>
                 <button type="submit" className="btn btn-primary">Crear Torneo</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showCreateClubModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 className="modal-title" style={{ marginBottom: '1.5rem' }}>Registrar Nuevo Club</h3>
+            <form onSubmit={handleCreateClub}>
+              <div className="form-group">
+                <label className="form-label">Nombre del Club Oficial</label>
+                <input type="text" className="input-text" required value={newClubName} onChange={e => setNewClubName(e.target.value)} placeholder="Ej. Club Ajedrez del Sur" />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateClubModal(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary">Crear Club</button>
               </div>
             </form>
           </div>
