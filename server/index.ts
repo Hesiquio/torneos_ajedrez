@@ -590,9 +590,10 @@ app.post('/api/tournaments/:id/complete', async (req, res) => {
 
     // Award GP points if club Grand Prix tournament
     if (tournament.club_id && tournament.is_grand_prix === 1) {
-      const gpPointsMap = [10, 8, 6, 4, 2];
+      const gpPointsMap = [10, 8, 6, 4, 2]; // 1st–5th
+      const gpParticipation = 2;             // 6th onwards
       for (let i = 0; i < sortedStandings.length; i++) {
-        const pointsToAward = i < gpPointsMap.length ? gpPointsMap[i] : 1;
+        const pointsToAward = i < gpPointsMap.length ? gpPointsMap[i] : gpParticipation;
         await db.execute({
           sql: 'UPDATE players SET grand_prix_points = grand_prix_points + ? WHERE id = ?',
           args: [pointsToAward, sortedStandings[i].id]
