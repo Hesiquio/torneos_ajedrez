@@ -7,6 +7,19 @@ import bcrypt from 'bcryptjs';
 import { db } from './db';
 import { generateNextRound, calculateSwissStandings } from './swiss';
 
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -111,11 +124,30 @@ app.post('/api/clubs', verifyGlobalAdmin, async (req, res) => {
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
     const id = randomUUID();
+    
+    // Generate unique slug
+    let baseSlug = slugify(name);
+    let slug = baseSlug || 'club-' + id.substring(0, 8);
+    let isUnique = false;
+    let attempt = 0;
+    while (!isUnique) {
+      const check = await db.execute({
+        sql: 'SELECT id FROM clubs WHERE slug = ?',
+        args: [slug]
+      });
+      if (check.rows.length === 0) {
+        isUnique = true;
+      } else {
+        attempt++;
+        slug = `${baseSlug}-${attempt}`;
+      }
+    }
+
     await db.execute({
-      sql: 'INSERT INTO clubs (id, name) VALUES (?, ?)',
-      args: [id, name]
+      sql: 'INSERT INTO clubs (id, name, slug) VALUES (?, ?, ?)',
+      args: [id, name, slug]
     });
-    res.json({ success: true, id });
+    res.json({ success: true, id, slug });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -124,9 +156,28 @@ app.post('/api/clubs', verifyGlobalAdmin, async (req, res) => {
 app.put('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
   try {
     const { name } = req.body;
+    
+    // Also regenerate slug on update to match new name
+    let baseSlug = slugify(name);
+    let slug = baseSlug || 'club-' + req.params.id.substring(0, 8);
+    let isUnique = false;
+    let attempt = 0;
+    while (!isUnique) {
+      const check = await db.execute({
+        sql: 'SELECT id FROM clubs WHERE slug = ? AND id != ?',
+        args: [slug, req.params.id]
+      });
+      if (check.rows.length === 0) {
+        isUnique = true;
+      } else {
+        attempt++;
+        slug = `${baseSlug}-${attempt}`;
+      }
+    }
+
     await db.execute({
-      sql: 'UPDATE clubs SET name = ? WHERE id = ?',
-      args: [name, req.params.id]
+      sql: 'UPDATE clubs SET name = ?, slug = ? WHERE id = ?',
+      args: [name, slug, req.params.id]
     });
     res.json({ success: true });
   } catch (error: any) {
@@ -195,16 +246,29 @@ app.get('/api/clubs/:id/history', async (req, res) => {
 
 app.get('/api/players', async (req, res) => {
   try {
-    const clubId = req.query.club_id;
+    const clubIdOrSlug = req.query.club_id;
     // include_hidden=true is only used by admin endpoints
     const includeHidden = req.query.include_hidden === 'true';
     const hiddenFilter = includeHidden ? '' : 'AND (hidden IS NULL OR hidden = 0)';
 
     let sql = `SELECT * FROM players WHERE club_id IS NULL ${hiddenFilter} ORDER BY grand_prix_points DESC, name ASC`;
     let args: any[] = [];
-    if (clubId && clubId !== 'null') {
-      sql = `SELECT * FROM players WHERE club_id = ? ${hiddenFilter} ORDER BY grand_prix_points DESC, name ASC`;
-      args = [clubId];
+    if (clubIdOrSlug && clubIdOrSlug !== 'null') {
+      // Find club ID first by id or slug
+      const slugStr = String(clubIdOrSlug);
+      const clubRes = await db.execute({
+        sql: 'SELECT id FROM clubs WHERE id = ? OR slug = ?',
+        args: [slugStr, slugStr]
+      });
+      if (clubRes.rows.length > 0) {
+        const actualClubId = String(clubRes.rows[0].id);
+        sql = `SELECT * FROM players WHERE club_id = ? ${hiddenFilter} ORDER BY grand_prix_points DESC, name ASC`;
+        args = [actualClubId];
+      } else {
+        // Fallback to query with clubIdOrSlug directly
+        sql = `SELECT * FROM players WHERE club_id = ? ${hiddenFilter} ORDER BY grand_prix_points DESC, name ASC`;
+        args = [clubIdOrSlug];
+      }
     }
     const result = await db.execute({ sql, args });
     res.json(result.rows);
@@ -297,20 +361,29 @@ app.delete('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
 app.get('/api/tournaments', async (req, res) => {
   try {
     const clubId = req.query.club_id;
+    const clubIdOrSlug = req.query.club_id;
     const showArchived = req.query.archived === 'true';
     
     let sql = '';
     let args: any[] = [];
 
-    if (clubId && clubId !== 'null') {
+    if (clubIdOrSlug && clubIdOrSlug !== 'null') {
+      // Find actual club ID first
+      const slugStr = String(clubIdOrSlug);
+      const clubRes = await db.execute({
+        sql: 'SELECT id FROM clubs WHERE id = ? OR slug = ?',
+        args: [slugStr, slugStr]
+      });
+      const actualClubId = clubRes.rows.length > 0 ? String(clubRes.rows[0].id) : slugStr;
+
       sql = showArchived
-        ? "SELECT id, name, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id = ? AND status = 'archived' ORDER BY created_at DESC"
-        : "SELECT id, name, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id = ? AND status != 'archived' ORDER BY created_at DESC";
-      args = [clubId];
+        ? "SELECT id, name, slug, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id = ? AND status = 'archived' ORDER BY created_at DESC"
+        : "SELECT id, name, slug, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id = ? AND status != 'archived' ORDER BY created_at DESC";
+      args = [actualClubId];
     } else {
       sql = showArchived
-        ? "SELECT id, name, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id IS NULL AND status = 'archived' ORDER BY created_at DESC"
-        : "SELECT id, name, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id IS NULL AND status != 'archived' ORDER BY created_at DESC";
+        ? "SELECT id, name, slug, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id IS NULL AND status = 'archived' ORDER BY created_at DESC"
+        : "SELECT id, name, slug, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE club_id IS NULL AND status != 'archived' ORDER BY created_at DESC";
     }
 
     const result = await db.execute({ sql, args });
@@ -328,26 +401,51 @@ app.post('/api/tournaments', async (req, res) => {
   const rounds = parseInt(totalRounds) || 5;
   const id = randomUUID();
   const grandPrix = isGrandPrix === undefined ? 1 : (isGrandPrix ? 1 : 0);
+
+  // Generate unique slug
+  let baseSlug = slugify(name);
+  let slug = baseSlug || 'torneo-' + id.substring(0, 8);
+  let isUnique = false;
+  let attempt = 0;
   try {
+    while (!isUnique) {
+      const check = await db.execute({
+        sql: 'SELECT id FROM tournaments WHERE slug = ?',
+        args: [slug]
+      });
+      if (check.rows.length === 0) {
+        isUnique = true;
+      } else {
+        attempt++;
+        slug = `${baseSlug}-${attempt}`;
+      }
+    }
+
     await db.execute({
-      sql: 'INSERT INTO tournaments (id, club_id, name, status, total_rounds, is_grand_prix, admin_key) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      args: [id, clubId || null, name, 'created', rounds, grandPrix, adminKey.trim()]
+      sql: 'INSERT INTO tournaments (id, club_id, name, slug, status, total_rounds, is_grand_prix, admin_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [id, clubId || null, name, slug, 'created', rounds, grandPrix, adminKey.trim()]
     });
-    res.json({ id, name, status: 'created', total_rounds: rounds, is_grand_prix: grandPrix, club_id: clubId || null });
+    res.json({ id, name, slug, status: 'created', total_rounds: rounds, is_grand_prix: grandPrix, club_id: clubId || null });
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-app.get('/api/tournaments/:id', async (req, res) => {
-  const { id } = req.params;
+app.get('/api/tournaments/:idOrSlug', async (req, res) => {
+  const { idOrSlug } = req.params;
   try {
+    // Find tournament by ID or Slug, join clubs to get the slug as well
     const tResult = await db.execute({
-      sql: 'SELECT id, club_id, name, status, total_rounds, is_grand_prix, created_at FROM tournaments WHERE id = ?',
-      args: [id]
+      sql: `SELECT t.id, t.club_id, t.name, t.slug, t.status, t.total_rounds, t.is_grand_prix, t.created_at,
+            c.slug AS club_slug
+            FROM tournaments t
+            LEFT JOIN clubs c ON t.club_id = c.id
+            WHERE t.id = ? OR t.slug = ?`,
+      args: [idOrSlug, idOrSlug]
     });
     if (tResult.rows.length === 0) return res.status(404).json({ error: 'Tournament not found' });
     const tournament = tResult.rows[0];
+    const id = tournament.id; // Actual UUID of the tournament
 
     const pResult = await db.execute({
       sql: `SELECT p.* FROM players p 

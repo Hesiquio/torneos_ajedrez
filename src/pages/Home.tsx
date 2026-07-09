@@ -31,7 +31,7 @@ export default function Home() {
           </h2>
           <div className="tournament-grid">
             {clubs.map(c => (
-              <Link to={`/club/${c.id}`} key={c.id} className="tournament-card" style={{ padding: '2rem' }}>
+              <Link to={`/club/${c.slug || c.id}`} key={c.id} className="tournament-card" style={{ padding: '2rem' }}>
                 <div className="tournament-card-header" style={{ marginBottom: '0.5rem' }}>
                   <h3 className="tournament-card-title">{c.name}</h3>
                 </div>

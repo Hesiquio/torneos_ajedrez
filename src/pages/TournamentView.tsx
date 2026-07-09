@@ -101,7 +101,7 @@ export default function TournamentView() {
       <header className="main-header">
         <div className="header-content">
           <div className="brand">
-            <Link to={t.club_id ? `/club/${t.club_id}` : '/public'} className="btn btn-secondary" style={{ padding: '0.6rem' }}>
+            <Link to={t.club_id ? `/club/${t.club_slug || t.club_id}` : '/public'} className="btn btn-secondary" style={{ padding: '0.6rem' }}>
               <ChevronLeft size={20} />
             </Link>
             <div>

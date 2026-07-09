@@ -11,7 +11,7 @@ export default function ClubLobby() {
 
   useEffect(() => {
     fetchApi('/clubs').then((clubs: any[]) => {
-      const c = clubs.find((x: any) => x.id === clubId);
+      const c = clubs.find((x: any) => x.id === clubId || x.slug === clubId);
       if (c) setClub(c);
     }).catch(console.error);
     fetchApi(`/tournaments?club_id=${clubId}`).then(setTournaments).catch(console.error);
@@ -30,7 +30,7 @@ export default function ClubLobby() {
               <p className="brand-subtitle">Torneos Oficiales Grand Prix</p>
             </div>
           </div>
-          <Link to={`/admin/club/${clubId}`} className="btn btn-secondary" style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', opacity: 0.5 }} title="Panel de Administrador">
+          <Link to={`/admin/club/${club?.id || clubId}`} className="btn btn-secondary" style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', opacity: 0.5 }} title="Panel de Administrador">
             <Settings size={16} />
           </Link>
         </div>
@@ -46,7 +46,7 @@ export default function ClubLobby() {
             </h2>
             <div className="tournament-grid" style={{ gridTemplateColumns: '1fr' }}>
               {tournaments.length > 0 ? tournaments.map(t => (
-                <Link to={`/tournament/${t.id}`} key={t.id} className="tournament-card">
+                <Link to={`/tournament/${t.slug || t.id}`} key={t.id} className="tournament-card">
                   <div className="tournament-card-header">
                     <h3 className="tournament-card-title">{t.name}</h3>
                     <span className={`status-badge status-${t.status}`}>
