@@ -39,33 +39,7 @@ export default function ClubLobby() {
 
       <main className="main-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2.5rem' }}>
         
-        {/* Lado Izquierdo: Torneos */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-          <div className="card-panel">
-            <h2 className="card-title">
-              <Swords size={24} color="var(--color-primary)" /> Torneos Activos
-            </h2>
-            <div className="tournament-grid" style={{ gridTemplateColumns: '1fr' }}>
-              {tournaments.length > 0 ? tournaments.map(t => (
-                <Link to={`/tournament/${t.slug || t.id}`} key={t.id} className="tournament-card">
-                  <div className="tournament-card-header">
-                    <h3 className="tournament-card-title">{t.name}</h3>
-                    <span className={`status-badge status-${t.status}`}>
-                      {t.status === 'created' ? 'Borrador' : t.status === 'in_progress' ? 'En Curso' : 'Finalizado'}
-                    </span>
-                  </div>
-                  <div style={{ color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', marginTop: 'auto' }}>
-                    <Calendar size={16} /> {new Date(t.created_at).toLocaleDateString()} &bull; {t.total_rounds} Rondas
-                  </div>
-                </Link>
-              )) : (
-                <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0' }}>No hay torneos activos en este momento.</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Lado Derecho: Ranking Global GP */}
+        {/* Lado Izquierdo: Tabla General GP */}
         <div className="card-panel" style={{ alignSelf: 'flex-start' }}>
           <h2 className="card-title" style={{ marginBottom: '1rem' }}>
             <Crown size={24} color="var(--color-primary)" /> Tabla General (GP)
@@ -137,6 +111,32 @@ export default function ClubLobby() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Lado Derecho: Torneos */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+          <div className="card-panel">
+            <h2 className="card-title">
+              <Swords size={24} color="var(--color-primary)" /> Torneos Activos
+            </h2>
+            <div className="tournament-grid" style={{ gridTemplateColumns: '1fr' }}>
+              {tournaments.length > 0 ? tournaments.map(t => (
+                <Link to={`/tournament/${t.slug || t.id}`} key={t.id} className="tournament-card">
+                  <div className="tournament-card-header">
+                    <h3 className="tournament-card-title">{t.name}</h3>
+                    <span className={`status-badge status-${t.status}`}>
+                      {t.status === 'created' ? 'Borrador' : t.status === 'in_progress' ? 'En Curso' : 'Finalizado'}
+                    </span>
+                  </div>
+                  <div style={{ color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', marginTop: 'auto' }}>
+                    <Calendar size={16} /> {new Date(t.created_at).toLocaleDateString()} &bull; {t.total_rounds} Rondas
+                  </div>
+                </Link>
+              )) : (
+                <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0' }}>No hay torneos activos en este momento.</p>
+              )}
+            </div>
           </div>
         </div>
 
