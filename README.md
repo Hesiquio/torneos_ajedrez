@@ -1,32 +1,74 @@
-# Torneos de Ajedrez - Grand Prix (v2.0)
+# Plataforma Profesional de Torneos de Ajedrez & Grand Prix (v2.2)
 
-Sistema de gestión para liga de ajedrez infantil en formato Grand Prix con torneos Suizos diarios.
+Ecosistema digital diseñado para organizar, emparejar y rankear jugadores de ajedrez bajo el formato **Sistema Suizo** y acumulativos de ligas **Grand Prix**. Permite administrar múltiples clubes independientes, cada uno con su propio lobby de torneos, ranking y control de jugadores.
 
-## Novedades en v2.0 (Grand Prix)
+---
 
-- **Liga Global (Grand Prix):** Los jugadores se mantienen en un registro global y acumulan "Puntos Grand Prix" por sus resultados en cada torneo diario.
-- **Formato Suizo:** Los torneos diarios ahora utilizan el Sistema Suizo. Esto permite emparejar dinámicamente a los jugadores según su nivel actual en el torneo sin requerir que todos asistan a todas las rondas, manejando los "Descansos" (Byes) automáticamente si hay un número impar de jugadores.
-- **Puntuación del Grand Prix:** Al finalizar cada torneo diario, se reparten puntos a la liga global:
-  - 1º Lugar: 10 pts
-  - 2º Lugar: 8 pts
-  - 3º Lugar: 6 pts
-  - 4º Lugar: 4 pts
-  - 5º Lugar: 2 pts
-  - Demás participantes: 1 pt (por asistencia).
+## 🚀 Características Clave
 
-## Requisitos
+### 1. Sistema Suizo Inteligente
+- Algoritmo de emparejamiento automático por ronda basado en puntuación suiza.
+- Manejo dinámico de números impares mediante **Descansos automáticos (Byes)**.
+- Desempates oficiales calculados por el sistema de **Coeficiente Buchholz** (suma de puntos de los oponentes).
+- Navegación interactiva por jornadas históricas del torneo en tiempo real.
 
-- Node.js (v18 o superior recomendado)
-- Base de datos Turso (LibSQL)
-- Variables de entorno `.env`:
-  - `DATABASE_URL=libsql://tu-base-de-datos.turso.io`
-  - `DATABASE_AUTH_TOKEN=tu-token`
+### 2. Acumulativos Grand Prix (Dense Ranking)
+- Distribución de puntos automática para el ranking global del club al finalizar cada torneo:
+  - 🥇 **1º Lugar:** 10 pts
+  - 🥈 **2º Lugar:** 8 pts
+  - 🥉 **3º Lugar:** 6 pts
+  - 🏅 **4º Lugar:** 4 pts
+  - 🎖️ **5º Lugar:** 2 pts
+  - ♟️ **Participación (6º en adelante):** 2 pts *(escala participativa)*
+- Tabla global del club estructurada con **Dense Ranking (1, 2, 2, 3)** para asegurar que los empatados compartan posición y el siguiente puesto continúe inmediatamente sin saltos artificiales.
 
-## Instalación y Ejecución
+### 3. Control de Privacidad y Visibilidad (Admin)
+- Opción de ocultar/mostrar perfiles específicos del ranking de la liga pública desde el Dashboard administrativo.
+- Útil para jugadores adultos u organizadores que quieren participar competitivamente en los torneos del club pero no desean aparecer expuestos en el ranking público.
 
-1. `npm install`
-2. `npm run db:init` (Cuidado: Esto borrará la base de datos y la reiniciará desde cero)
-3. `npm run build:local` para compilar el frontend y backend.
-4. `npm start` para producción o `npm run dev:backend` / `npm run dev:frontend` para desarrollo local.
+### 4. URLs y Slugs Amigables
+- Enlaces limpios optimizados para SEO y redes sociales (ej: `/club/los-guardianes-del-rey`, `/tournament/retas08julio26`).
+- Soporte para enlaces antiguos (basados en UUID), resolviendo y redirigiendo de forma transparente.
 
-*(Nota: La versión 1.x (Round Robin) se encuentra preservada en el tag `v1` de Git).*
+---
+
+## 🛠️ Tecnologías Utilizadas
+
+- **Frontend:** React, React Router v6, TypeScript, Vite, Lucide-React.
+- **Backend:** Express, Node.js.
+- **Base de Datos:** LibSQL (Turso DB) optimizado con índices de unicidad.
+- **Despliegue/Producción:** Hostinger (Node setup).
+
+---
+
+## 💻 Desarrollo Local
+
+### 1. Variables de Entorno
+Crea un archivo `.env` en la raíz del proyecto:
+```env
+DATABASE_URL=libsql://tu-base-de-datos.turso.io
+DATABASE_AUTH_TOKEN=tu-auth-token-secreto
+VITE_API_URL=/api
+PORT=3001
+```
+
+### 2. Instalar dependencias
+```bash
+npm install
+```
+
+### 3. Iniciar el Servidor de Desarrollo
+```bash
+# Inicia frontend en puerto 5173 y backend en puerto 3001
+npm run dev
+```
+
+### 4. Compilar para Producción
+```bash
+npm run build:local
+```
+
+---
+
+## ⚖️ Licencia
+Plataforma abierta creada para el desarrollo e interés del ajedrez competitivo. Desarrollada por AhkinTech.
