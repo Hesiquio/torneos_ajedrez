@@ -182,13 +182,15 @@ export default function AdminClubDashboard() {
                       <tr key={p.id} style={{ opacity: p.hidden ? 0.5 : 1 }}>
                         {editingPlayerId === p.id ? (
                           <>
-                            <td><input type="text" className="input-text" style={{ padding: '0.5rem' }} value={editPlayerName} onChange={e => setEditPlayerName(e.target.value)} /></td>
-                            <td><input type="number" className="input-text" style={{ padding: '0.5rem', width: '70px' }} value={editPlayerAge} onChange={e => setEditPlayerAge(e.target.value)} placeholder="Años" /></td>
-                            <td><input type="number" className="input-text" style={{ padding: '0.5rem', width: '80px' }} value={editPlayerGP} onChange={e => setEditPlayerGP(parseInt(e.target.value))} /></td>
+                            <td><input type="text" className="input-text" style={{ padding: '0.5rem', minWidth: '120px' }} value={editPlayerName} onChange={e => setEditPlayerName(e.target.value)} /></td>
+                            <td><input type="number" className="input-text" style={{ padding: '0.5rem', width: '70px', minWidth: '60px' }} value={editPlayerAge} onChange={e => setEditPlayerAge(e.target.value)} placeholder="Años" /></td>
+                            <td><input type="number" className="input-text" style={{ padding: '0.5rem', width: '80px', minWidth: '70px' }} value={editPlayerGP} onChange={e => setEditPlayerGP(parseInt(e.target.value))} /></td>
                             <td></td>
-                            <td style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button className="btn btn-primary" style={{ padding: '0.5rem' }} onClick={() => handleEditPlayer(p.id)}><Save size={16}/></button>
-                              <button className="btn btn-secondary" style={{ padding: '0.5rem' }} onClick={() => setEditingPlayerId(null)}>Cancelar</button>
+                            <td>
+                              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                <button className="btn btn-primary" style={{ padding: '0.5rem', flexShrink: 0 }} onClick={() => handleEditPlayer(p.id)}><Save size={16}/></button>
+                                <button className="btn btn-secondary" style={{ padding: '0.5rem', flexShrink: 0 }} onClick={() => setEditingPlayerId(null)}>X</button>
+                              </div>
                             </td>
                           </>
                         ) : (
@@ -209,9 +211,11 @@ export default function AdminClubDashboard() {
                                 {p.hidden ? <EyeOff size={16} color="var(--color-text-muted)" /> : <Eye size={16} color="var(--color-success)" />}
                               </button>
                             </td>
-                            <td style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button className="btn btn-secondary" style={{ padding: '0.5rem' }} onClick={() => { setEditingPlayerId(p.id); setEditPlayerName(p.name); setEditPlayerAge(p.age || ''); setEditPlayerGP(p.grand_prix_points); }}><Edit2 size={16} /></button>
-                              <button className="btn btn-danger" style={{ padding: '0.5rem' }} onClick={() => handleDeletePlayer(p.id)}><Trash2 size={16} /></button>
+                            <td>
+                              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                <button className="btn btn-secondary" style={{ padding: '0.5rem', flexShrink: 0 }} onClick={() => { setEditingPlayerId(p.id); setEditPlayerName(p.name); setEditPlayerAge(p.age || ''); setEditPlayerGP(p.grand_prix_points); }}><Edit2 size={16} /></button>
+                                <button className="btn btn-danger" style={{ padding: '0.5rem', flexShrink: 0 }} onClick={() => handleDeletePlayer(p.id)}><Trash2 size={16} /></button>
+                              </div>
                             </td>
                           </>
                         )}
