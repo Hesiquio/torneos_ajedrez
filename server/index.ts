@@ -552,29 +552,50 @@ app.post('/api/tournaments/:id/complete', async (req, res) => {
 
     await db.execute({ sql: "UPDATE tournaments SET status = 'completed' WHERE id = ?", args: [id] });
 
-    const pResult = await db.execute({ sql: 'SELECT player_id FROM tournament_participants WHERE tournament_id = ?', args: [id] });
-    const participants = pResult.rows.map((r: any, idx: number) => ({ id: r.player_id, seed: idx + 1 }));
+    const pResult = await db.execute({
+      sql: `SELECT p.id FROM players p JOIN tournament_participants tp ON p.id = tp.player_id WHERE tp.tournament_id = ?`,
+      args: [id]
+    });
+    const playerIds = pResult.rows.map((r: any) => r.id as string);
 
-    const rResult = await db.execute({ sql: 'SELECT * FROM rounds WHERE tournament_id = ?', args: [id] });
-    const mRes = await db.execute({ sql: 'SELECT m.*, r.round_number FROM matches m JOIN rounds r ON m.round_id = r.id WHERE m.tournament_id = ?', args: [id] });
-    const matchHistory = mRes.rows.map((m: any) => ({
-      round: m.round_number,
-      home: { id: m.white_player_id, points: m.result === '1-0' ? 1 : m.result === '0.5-0.5' ? 0.5 : 0 },
-      away: { id: m.black_player_id, points: m.result === '0-1' ? 1 : m.result === '0.5-0.5' ? 0.5 : 0 }
-    }));
+    const mRes = await db.execute({
+      sql: 'SELECT white_player_id, black_player_id, result, is_bye FROM matches WHERE tournament_id = ?',
+      args: [id]
+    });
 
-    const swissStandings = calculateSwissStandings(rResult.rows.length, participants, matchHistory);
-    
-    // Solo repartimos puntos GP si el torneo pertenece a un club y está marcado como Grand Prix
+    // Direct standings calculation (same as GET /tournaments/:id)
+    const pointsMap = new Map<string, number>();
+    const opponentsMap = new Map<string, string[]>();
+    for (const pid of playerIds) { pointsMap.set(pid, 0); opponentsMap.set(pid, []); }
+
+    for (const m of mRes.rows) {
+      if (!m.result || m.is_bye === 1) continue;
+      const wid = m.white_player_id as string;
+      const bid = m.black_player_id as string;
+      if (m.result === '1-0') pointsMap.set(wid, (pointsMap.get(wid) || 0) + 1);
+      else if (m.result === '0-1') pointsMap.set(bid, (pointsMap.get(bid) || 0) + 1);
+      else if (m.result === '0.5-0.5') {
+        pointsMap.set(wid, (pointsMap.get(wid) || 0) + 0.5);
+        pointsMap.set(bid, (pointsMap.get(bid) || 0) + 0.5);
+      }
+      opponentsMap.get(wid)?.push(bid);
+      opponentsMap.get(bid)?.push(wid);
+    }
+
+    const sortedStandings = playerIds.map(pid => {
+      const pts = pointsMap.get(pid) || 0;
+      const buchholz = (opponentsMap.get(pid) || []).reduce((s, opp) => s + (pointsMap.get(opp) || 0), 0);
+      return { id: pid, pts, buchholz };
+    }).sort((a, b) => b.pts - a.pts || b.buchholz - a.buchholz);
+
+    // Award GP points if club Grand Prix tournament
     if (tournament.club_id && tournament.is_grand_prix === 1) {
       const gpPointsMap = [10, 8, 6, 4, 2];
-      for (let i = 0; i < swissStandings.length; i++) {
-        const pid = swissStandings[i].id;
+      for (let i = 0; i < sortedStandings.length; i++) {
         const pointsToAward = i < gpPointsMap.length ? gpPointsMap[i] : 1;
-        
         await db.execute({
           sql: 'UPDATE players SET grand_prix_points = grand_prix_points + ? WHERE id = ?',
-          args: [pointsToAward, pid]
+          args: [pointsToAward, sortedStandings[i].id]
         });
       }
     }
