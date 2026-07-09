@@ -220,11 +220,12 @@ app.post('/api/players', async (req, res) => {
         return res.status(400).json({ error: 'Player name is required' });
     try {
         const id = (0, crypto_1.randomUUID)();
+        const formattedName = name.trim().toUpperCase();
         await db_1.db.execute({
             sql: 'INSERT INTO players (id, club_id, name, age) VALUES (?, ?, ?, ?)',
-            args: [id, clubId || null, name.trim(), age ? parseInt(age) : null]
+            args: [id, clubId || null, formattedName, age ? parseInt(age) : null]
         });
-        res.json({ id, club_id: clubId || null, name: name.trim(), age, grand_prix_points: 0 });
+        res.json({ id, club_id: clubId || null, name: formattedName, age, grand_prix_points: 0 });
     }
     catch (error) {
         res.status(500).json({ error: 'Database error' });
@@ -232,7 +233,7 @@ app.post('/api/players', async (req, res) => {
 });
 app.put('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
     const { id } = req.params;
-    const { name, age, grand_prix_points } = req.body;
+    const { name, age, grand_prix_points, grandPrixPoints } = req.body;
     if (!name || name.trim() === '')
         return res.status(400).json({ error: 'Player name is required' });
     try {
@@ -243,9 +244,10 @@ app.put('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
         if (user.role === 'CLUB_ADMIN' && pResult.rows[0].club_id !== user.clubId) {
             return res.status(403).json({ error: 'Forbidden' });
         }
+        const finalGP = grand_prix_points !== undefined ? grand_prix_points : grandPrixPoints;
         await db_1.db.execute({
             sql: 'UPDATE players SET name = ?, age = ?, grand_prix_points = ? WHERE id = ?',
-            args: [name.trim(), age ? parseInt(age) : null, grand_prix_points !== undefined ? parseFloat(grand_prix_points) : 0, id]
+            args: [name.trim().toUpperCase(), age ? parseInt(age) : null, finalGP !== undefined ? parseFloat(finalGP) : 0, id]
         });
         res.json({ success: true });
     }
