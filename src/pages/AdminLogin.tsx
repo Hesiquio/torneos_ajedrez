@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { fetchApi, setAuthToken } from '../api';
 import { Lock, ChevronLeft } from 'lucide-react';
 
@@ -7,6 +7,8 @@ export default function AdminLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = (location.state as any)?.returnTo;
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -17,7 +19,10 @@ export default function AdminLogin() {
       });
       setAuthToken(res.token);
       
-      if (res.user.role === 'SUPER_ADMIN') {
+      // If redirected from a protected page, go back there
+      if (returnTo) {
+        navigate(returnTo);
+      } else if (res.user.role === 'SUPER_ADMIN') {
         navigate('/admin/super');
       } else {
         navigate('/admin/dashboard');

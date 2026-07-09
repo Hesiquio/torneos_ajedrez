@@ -29,7 +29,7 @@ export default function AdminClubDashboard() {
 
   async function loadData() {
     try {
-      // Find club
+      // Find club — this call requires an admin token
       const clubsRes = await fetchApi('/admin/clubs');
       const c = clubsRes.find((x:any) => x.id === clubId);
       if (!c) return navigate('/admin/super');
@@ -40,8 +40,9 @@ export default function AdminClubDashboard() {
       
       const tRes = await fetchApi(`/tournaments?club_id=${clubId}`);
       setTournaments(tRes);
-    } catch(e) {
-      console.error(e);
+    } catch(e: any) {
+      // If unauthorized, redirect to login
+      navigate('/admin', { state: { returnTo: `/admin/club/${clubId}` } });
     }
   }
 
