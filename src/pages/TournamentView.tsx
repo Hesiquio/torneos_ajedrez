@@ -10,6 +10,7 @@ export default function TournamentView() {
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
+  const [viewingRound, setViewingRound] = useState<number | null>(null);
 
   useEffect(() => {
     loadTournament();
@@ -81,15 +82,19 @@ export default function TournamentView() {
   if (!data) return <div className="layout-container" style={{ justifyContent: 'center', alignItems: 'center' }}>Cargando Torneo...</div>;
 
   const t = data.tournament;
-  const currentRound = data.rounds.length > 0 ? data.rounds[data.rounds.length - 1] : null;
+  const lastRound = data.rounds.length > 0 ? data.rounds[data.rounds.length - 1] : null;
+  // viewingRound null means "show the last/current round"
+  const currentRoundNum = viewingRound ?? lastRound?.round_number ?? 1;
   const matchesByRound = data.matches.reduce((acc: any, m: any) => {
     if (!acc[m.round_number]) acc[m.round_number] = [];
     acc[m.round_number].push(m);
     return acc;
   }, {});
 
-  const currentRoundMatches = currentRound ? matchesByRound[currentRound.round_number] : [];
-  const isCurrentRoundCompleted = currentRoundMatches?.every((m: any) => m.is_bye === 1 || m.result !== null);
+  const currentRoundMatches = matchesByRound[currentRoundNum] ?? [];
+  const lastRoundMatches = matchesByRound[lastRound?.round_number] ?? [];
+  const isCurrentRoundCompleted = lastRoundMatches.every((m: any) => m.is_bye === 1 || m.result !== null);
+  const isViewingLast = currentRoundNum === lastRound?.round_number;
 
   return (
     <div className="layout-container">
@@ -129,9 +134,9 @@ export default function TournamentView() {
               <h2 className="card-title" style={{ fontSize: '1.25rem', borderColor: 'rgba(226,184,92,0.2)', color: 'var(--color-primary)' }}>
                 <AlertTriangle size={20} /> Controles del Árbitro
               </h2>
-              {currentRound?.round_number < t.total_rounds ? (
+              {lastRound?.round_number < t.total_rounds ? (
                 <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }} disabled={!isCurrentRoundCompleted} onClick={() => handleAction('next-round')}>
-                  <RefreshCw size={20} /> Generar Ronda {currentRound.round_number + 1}
+                  <RefreshCw size={20} /> Generar Ronda {lastRound.round_number + 1}
                 </button>
               ) : (
                 <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', background: 'var(--color-success)' }} disabled={!isCurrentRoundCompleted} onClick={() => handleAction('complete')}>
@@ -196,9 +201,42 @@ export default function TournamentView() {
             </div>
           ) : (
             <div className="card-panel">
-              <h2 className="card-title" style={{ fontSize: '1.35rem' }}>
-                Emparejamientos &bull; Ronda {currentRound?.round_number} de {t.total_rounds}
-              </h2>
+              {/* Round Navigator */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <h2 className="card-title" style={{ fontSize: '1.35rem', borderBottom: 'none', margin: 0, padding: 0 }}>
+                  Emparejamientos &bull; Ronda {currentRoundNum} de {t.total_rounds}
+                </h2>
+                {data.rounds.length > 1 && (
+                  <div style={{ display: 'flex', gap: '0.375rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '0.3rem', border: '1px solid var(--border-light)' }}>
+                    {data.rounds.map((r: any) => (
+                      <button
+                        key={r.round_number}
+                        onClick={() => setViewingRound(r.round_number)}
+                        style={{
+                          minWidth: '36px', height: '36px',
+                          borderRadius: '8px', border: 'none',
+                          cursor: 'pointer',
+                          fontWeight: '700', fontSize: '0.9rem',
+                          fontFamily: 'var(--font-sans)',
+                          transition: 'all 0.2s ease',
+                          background: currentRoundNum === r.round_number
+                            ? 'linear-gradient(135deg, rgba(226,184,92,0.3), rgba(240,203,118,0.15))'
+                            : 'transparent',
+                          color: currentRoundNum === r.round_number
+                            ? 'var(--color-primary)'
+                            : 'var(--color-text-secondary)',
+                          boxShadow: currentRoundNum === r.round_number
+                            ? '0 2px 8px rgba(226,184,92,0.2)'
+                            : 'none',
+                        }}
+                      >
+                        {r.round_number}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{ borderBottom: '1px solid var(--border-light)', marginBottom: '1.5rem' }} />
               <div className="matches-list">
                 {currentRoundMatches?.map((m:any) => (
                   <div key={m.id} className="match-card">
@@ -212,7 +250,7 @@ export default function TournamentView() {
                       </div>
                     </div>
                     <div style={{ borderTop: '1px solid var(--border-light)', margin: '0 -1.25rem', paddingTop: '1rem', paddingInline: '1.25rem' }}>
-                      {isAdminUnlocked && m.is_bye === 0 && t.status === 'in_progress' ? (
+                      {isAdminUnlocked && m.is_bye === 0 && t.status === 'in_progress' && isViewingLast ? (
                         <select className="result-select" value={m.result || 'pending'} onChange={(e) => handleResult(m.id, e.target.value)}>
                           <option value="pending" disabled hidden>Seleccionar Resultado...</option>
                           <option value="1-0">Ganan Blancas (1-0)</option>
@@ -231,6 +269,9 @@ export default function TournamentView() {
                     </div>
                   </div>
                 ))}
+                {currentRoundMatches?.length === 0 && (
+                  <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0' }}>Sin emparejamientos en esta ronda.</p>
+                )}
               </div>
             </div>
           )}
