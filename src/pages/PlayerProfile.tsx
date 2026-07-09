@@ -210,10 +210,11 @@ export default function PlayerProfile() {
                     </tr>
                   ) : matches.length > 0 ? matches.map(m => {
                     const isWhite = m.white_player_id === playerId;
-                    const opponent = isWhite ? m.black_player_name : m.white_player_name;
+                    const opponent = m.is_bye === 1 ? 'DESCANSO (BYE)' : (isWhite ? m.black_player_name : m.white_player_name);
                     
                     let outcome: 'win' | 'loss' | 'draw' = 'draw';
-                    if (m.result === '1-0') outcome = isWhite ? 'win' : 'loss';
+                    if (m.is_bye === 1) outcome = 'win';
+                    else if (m.result === '1-0') outcome = isWhite ? 'win' : 'loss';
                     else if (m.result === '0-1') outcome = isWhite ? 'loss' : 'win';
 
                     return (
@@ -225,7 +226,7 @@ export default function PlayerProfile() {
                           </div>
                         </td>
                         <td style={{ verticalAlign: 'middle', fontSize: '1rem', fontWeight: 'bold' }}>
-                          {isWhite ? <span title="Piezas Blancas">♙ B</span> : <span title="Piezas Negras" style={{ color: 'var(--color-text-secondary)' }}>♟ N</span>}
+                          {m.is_bye === 1 ? <span style={{ color: 'var(--color-text-muted)', fontWeight: 'normal' }}>-</span> : (isWhite ? <span title="Piezas Blancas">♙ B</span> : <span title="Piezas Negras" style={{ color: 'var(--color-text-secondary)' }}>♟ N</span>)}
                         </td>
                         <td style={{ verticalAlign: 'middle', textTransform: 'uppercase', fontSize: '0.85rem' }}>{opponent}</td>
                         <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>

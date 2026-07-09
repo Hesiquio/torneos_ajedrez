@@ -82,7 +82,7 @@ async function verifyTournamentAdminKey(tournamentId: string, req: express.Reque
     } catch(e) {}
   }
 
-  const providedKey = req.headers['x-admin-key'] || req.body.adminKey;
+  const providedKey = req.headers['x-admin-key'] || req.body?.adminKey;
   if (!providedKey) return false;
   try {
     const result = await db.execute({ sql: 'SELECT admin_key FROM tournaments WHERE id = ?', args: [tournamentId] });
@@ -121,6 +121,11 @@ app.get('/api/admin/clubs', verifyGlobalAdmin, async (req, res) => {
 
 app.post('/api/clubs', verifyGlobalAdmin, async (req, res) => {
   try {
+    const user = (req as any).user;
+    if (user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Prohibido: Solo un Super Administrador puede crear clubes' });
+    }
+
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
     const id = randomUUID();
@@ -155,6 +160,14 @@ app.post('/api/clubs', verifyGlobalAdmin, async (req, res) => {
 
 app.put('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
   try {
+    const user = (req as any).user;
+    if (user.role === 'CLUB_ADMIN' && user.clubId !== req.params.id) {
+      return res.status(403).json({ error: 'Prohibido: No tienes permisos para editar este club' });
+    }
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'CLUB_ADMIN') {
+      return res.status(403).json({ error: 'Prohibido' });
+    }
+
     const { name, description } = req.body;
     
     // Also regenerate slug on update to match new name
@@ -187,6 +200,11 @@ app.put('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
 
 app.delete('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
   try {
+    const user = (req as any).user;
+    if (user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Prohibido: Solo un Super Administrador puede eliminar clubes' });
+    }
+
     // Delete players (this also avoids orphan players)
     await db.execute({
       sql: 'DELETE FROM players WHERE club_id = ?',
@@ -361,6 +379,28 @@ app.get('/api/players/:id/history', async (req, res) => {
 app.post('/api/players', async (req, res) => {
   const { name, age, clubId } = req.body;
   if (!name || name.trim() === '') return res.status(400).json({ error: 'Player name is required' });
+
+  // Enforce auth if creating a player inside a club
+  let user: any = null;
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      user = jwt.verify(token, JWT_SECRET);
+    } catch (e) {}
+  }
+
+  if (clubId && clubId !== 'null') {
+    if (!user) {
+      return res.status(401).json({ error: 'No autorizado' });
+    }
+    if (user.role === 'CLUB_ADMIN' && user.clubId !== clubId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'CLUB_ADMIN') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+  }
+
   try {
     const id = randomUUID();
     const formattedName = name.trim().toUpperCase();
@@ -374,7 +414,7 @@ app.post('/api/players', async (req, res) => {
   }
 });
 
-  app.put('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
+app.put('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
   const { id } = req.params;
   const { name, age, grand_prix_points, grandPrixPoints } = req.body;
   if (!name || name.trim() === '') return res.status(400).json({ error: 'Player name is required' });
@@ -385,6 +425,9 @@ app.post('/api/players', async (req, res) => {
     const user = (req as any).user;
     if (user.role === 'CLUB_ADMIN' && pResult.rows[0].club_id !== user.clubId) {
        return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'CLUB_ADMIN') {
+      return res.status(403).json({ error: 'Forbidden' });
     }
 
     const finalGP = grand_prix_points !== undefined ? grand_prix_points : grandPrixPoints;
@@ -409,6 +452,9 @@ app.patch('/api/players/:id/visibility', verifyGlobalAdmin, async (req, res) => 
     if (user.role === 'CLUB_ADMIN' && pResult.rows[0].club_id !== user.clubId) {
       return res.status(403).json({ error: 'Forbidden' });
     }
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'CLUB_ADMIN') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const currentlyHidden = pResult.rows[0].hidden === 1;
     await db.execute({
       sql: 'UPDATE players SET hidden = ? WHERE id = ?',
@@ -429,6 +475,9 @@ app.delete('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
     const user = (req as any).user;
     if (user.role === 'CLUB_ADMIN' && pResult.rows[0].club_id !== user.clubId) {
        return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'CLUB_ADMIN') {
+      return res.status(403).json({ error: 'Forbidden' });
     }
     await db.execute({ sql: 'DELETE FROM players WHERE id = ?', args: [id] });
     res.json({ success: true });
@@ -479,6 +528,28 @@ app.post('/api/tournaments', async (req, res) => {
   if (!name || !adminKey || adminKey.trim() === '') {
     return res.status(400).json({ error: 'Invalid name or admin key' });
   }
+
+  // Enforce auth if creating a tournament inside a club
+  let user: any = null;
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      user = jwt.verify(token, JWT_SECRET);
+    } catch (e) {}
+  }
+
+  if (clubId && clubId !== 'null') {
+    if (!user) {
+      return res.status(401).json({ error: 'No autorizado' });
+    }
+    if (user.role === 'CLUB_ADMIN' && user.clubId !== clubId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'CLUB_ADMIN') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+  }
+
   const rounds = parseInt(totalRounds) || 5;
   const id = randomUUID();
   const grandPrix = isGrandPrix === undefined ? 1 : (isGrandPrix ? 1 : 0);
@@ -520,7 +591,34 @@ app.put('/api/tournaments/:id', async (req, res) => {
     return res.status(400).json({ error: 'Name and adminKey are required' });
   }
   
+  // Enforce auth
+  let user: any = null;
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      user = jwt.verify(token, JWT_SECRET);
+    } catch (e) {}
+  }
+
   try {
+    const tCheck = await db.execute({
+      sql: 'SELECT club_id FROM tournaments WHERE id = ?',
+      args: [id]
+    });
+    if (tCheck.rows.length === 0) return res.status(404).json({ error: 'Tournament not found' });
+    
+    const clubId = tCheck.rows[0].club_id;
+    if (clubId) {
+      if (!user) return res.status(401).json({ error: 'No autorizado' });
+      if (user.role === 'CLUB_ADMIN' && user.clubId !== clubId) return res.status(403).json({ error: 'Forbidden' });
+      if (user.role !== 'SUPER_ADMIN' && user.role !== 'CLUB_ADMIN') return res.status(403).json({ error: 'Forbidden' });
+    } else {
+      // If it's a public lobby tournament, verify key
+      if (!(await verifyTournamentAdminKey(id, req))) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+    }
+
     // Regenerate unique slug based on new name
     let baseSlug = slugify(name);
     let slug = baseSlug || 'torneo-' + id.substring(0, 8);
