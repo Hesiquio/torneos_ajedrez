@@ -97,7 +97,7 @@ export default function ClubLobby() {
                              currentRank === 3 ? <span className="rank-medal" title="Bronce">🥉</span> :
                              <span style={{ color: 'var(--color-text-muted)' }}>{currentRank}</span>}
                           </td>
-                          <td style={{ fontWeight: isTop3 ? '600' : '400', color: isTop3 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
+                          <td style={{ fontWeight: isTop3 ? '600' : '400', color: isTop3 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                             {p.name}
                           </td>
                           <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--color-primary)' }}>
