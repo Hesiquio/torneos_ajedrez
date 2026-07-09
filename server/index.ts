@@ -219,8 +219,16 @@ app.delete('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/clubs/:id/history', async (req, res) => {
+app.get('/api/clubs/:idOrSlug/history', async (req, res) => {
+  const { idOrSlug } = req.params;
   try {
+    // Resolve actual club ID
+    const clubRes = await db.execute({
+      sql: 'SELECT id FROM clubs WHERE id = ? OR slug = ?',
+      args: [idOrSlug, idOrSlug]
+    });
+    const actualClubId = clubRes.rows.length > 0 ? String(clubRes.rows[0].id) : idOrSlug;
+
     const rs = await db.execute({
       sql: `SELECT m.id, m.result, m.is_bye,
             t.name as tournament_name, t.created_at as tournament_date,
@@ -234,7 +242,7 @@ app.get('/api/clubs/:id/history', async (req, res) => {
             WHERE t.club_id = ? AND m.result IS NOT NULL AND m.is_bye = 0
             ORDER BY t.created_at DESC, r.round_number ASC, m.id ASC
             LIMIT 50`,
-      args: [req.params.id]
+      args: [actualClubId]
     });
     res.json(rs.rows);
   } catch (error: any) {
