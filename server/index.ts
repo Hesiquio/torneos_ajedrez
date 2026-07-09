@@ -171,14 +171,18 @@ app.delete('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
 app.get('/api/clubs/:id/history', async (req, res) => {
   try {
     const rs = await db.execute({
-      sql: `SELECT m.*, t.name as tournament_name,
+      sql: `SELECT m.id, m.result, m.is_bye,
+            t.name as tournament_name, t.created_at as tournament_date,
+            r.round_number,
             w.name as white_player_name, b.name as black_player_name
             FROM matches m
             JOIN tournaments t ON m.tournament_id = t.id
+            JOIN rounds r ON m.round_id = r.id
             JOIN players w ON m.white_player_id = w.id
             LEFT JOIN players b ON m.black_player_id = b.id
-            WHERE t.club_id = ? AND m.result IS NOT NULL
-            ORDER BY m.id DESC LIMIT 20`,
+            WHERE t.club_id = ? AND m.result IS NOT NULL AND m.is_bye = 0
+            ORDER BY t.created_at DESC, r.round_number ASC, m.id ASC
+            LIMIT 50`,
       args: [req.params.id]
     });
     res.json(rs.rows);

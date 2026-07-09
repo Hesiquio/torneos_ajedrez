@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import PublicLobby from './pages/PublicLobby';
 import ClubLobby from './pages/ClubLobby';
+import ClubHistory from './pages/ClubHistory';
 import TournamentView from './pages/TournamentView';
 import AdminLogin from './pages/AdminLogin';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
@@ -14,6 +15,7 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/public" element={<PublicLobby />} />
       <Route path="/club/:clubId" element={<ClubLobby />} />
+      <Route path="/club/:clubId/history" element={<ClubHistory />} />
       <Route path="/tournament/:id" element={<TournamentView />} />
       
       <Route path="/admin" element={<AdminLogin />} />

@@ -8,7 +8,6 @@ export default function ClubLobby() {
   const [club, setClub] = useState<any>(null);
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
     fetchApi('/clubs').then((clubs: any[]) => {
@@ -17,7 +16,6 @@ export default function ClubLobby() {
     }).catch(console.error);
     fetchApi(`/tournaments?club_id=${clubId}`).then(setTournaments).catch(console.error);
     fetchApi(`/players?club_id=${clubId}`).then(setPlayers).catch(console.error);
-    fetchApi(`/clubs/${clubId}/history`).then(setHistory).catch(console.error);
   }, [clubId]);
 
   return (
@@ -110,38 +108,33 @@ export default function ClubLobby() {
           </div>
         </div>
 
-        {/* Historial de Partidas */}
+        {/* Historial de Partidas - Botón a página aparte */}
         <div style={{ gridColumn: '1 / -1' }}>
-          <div className="card-panel">
-            <h2 className="card-title">
-              <History size={24} color="var(--color-info)" /> Últimos Resultados Oficiales
-            </h2>
-            <div className="matches-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-              {history.length > 0 ? history.map(m => (
-                <div key={m.id} className="match-card" style={{ padding: '1rem', fontSize: '0.9rem' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>
-                    {m.tournament_name}
-                  </div>
-                  <div className="match-players">
-                    <div className="match-player white" style={{ fontSize: '1rem' }}>
-                      <span className="piece-icon white" style={{ fontSize: '1.2rem' }}>♙</span> {m.white_player_name}
-                    </div>
-                    <div className="match-vs" style={{ fontSize: '1rem' }}>vs</div>
-                    <div className="match-player black" style={{ fontSize: '1rem' }}>
-                      {m.black_player_name} <span className="piece-icon black" style={{ fontSize: '1.2rem' }}>♟</span>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center', marginTop: '0.5rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-                    {m.result}
-                  </div>
-                </div>
-              )) : (
-                <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0', gridColumn: '1 / -1' }}>
-                  Aún no hay historial de partidas en este club.
-                </p>
-              )}
+          <Link
+            to={`/club/${clubId}/history`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1.5rem 2rem',
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid var(--border-light)',
+              borderRadius: '20px',
+              textDecoration: 'none',
+              color: 'inherit',
+              transition: 'all 0.3s ease',
+            }}
+            className="tournament-card"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <History size={28} color="var(--color-info)" />
+              <div>
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', fontWeight: '700' }}>Historial de Resultados</div>
+                <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: '0.2rem' }}>Ver todas las partidas oficiales del club por torneo y jornada</div>
+              </div>
             </div>
-          </div>
+            <ChevronLeft size={20} style={{ transform: 'rotate(180deg)', color: 'var(--color-text-muted)' }} />
+          </Link>
         </div>
 
       </main>
