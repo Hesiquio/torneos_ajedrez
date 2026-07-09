@@ -13,8 +13,10 @@ export default function AdminClubDashboard() {
 
   // Player Form
   const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerAge, setNewPlayerAge] = useState('');
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editPlayerName, setEditPlayerName] = useState('');
+  const [editPlayerAge, setEditPlayerAge] = useState('');
   const [editPlayerGP, setEditPlayerGP] = useState(0);
 
   // Tournament Form
@@ -52,9 +54,10 @@ export default function AdminClubDashboard() {
     try {
       await fetchApi('/players', {
         method: 'POST',
-        body: JSON.stringify({ name: newPlayerName, clubId })
+        body: JSON.stringify({ name: newPlayerName, age: newPlayerAge || null, clubId })
       });
       setNewPlayerName('');
+      setNewPlayerAge('');
       loadData();
     } catch (e: any) { alert(e.message); }
   }
@@ -63,7 +66,7 @@ export default function AdminClubDashboard() {
     try {
       await fetchApi(`/players/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ name: editPlayerName, grandPrixPoints: editPlayerGP, clubId })
+        body: JSON.stringify({ name: editPlayerName, age: editPlayerAge || null, grandPrixPoints: editPlayerGP, clubId })
       });
       setEditingPlayerId(null);
       loadData();
@@ -161,6 +164,10 @@ export default function AdminClubDashboard() {
                   <label className="form-label">Nombre Completo</label>
                   <input type="text" className="input-text" value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} required />
                 </div>
+                <div className="form-group">
+                  <label className="form-label">Edad (Opcional)</label>
+                  <input type="number" className="input-text" value={newPlayerAge} onChange={e => setNewPlayerAge(e.target.value)} />
+                </div>
                 <button type="submit" className="btn btn-primary" style={{ width: '100%' }}><Plus size={18} /> Agregar</button>
               </form>
             </div>
@@ -169,13 +176,14 @@ export default function AdminClubDashboard() {
               <h2 className="card-title">Lista de Jugadores</h2>
               <div className="table-wrapper">
                 <table className="standings-table">
-                  <thead><tr><th>Jugador</th><th>Pts GP</th><th style={{ textAlign: 'center' }}>Visible</th><th>Acciones</th></tr></thead>
+                  <thead><tr><th>Jugador</th><th>Edad</th><th>Pts GP</th><th style={{ textAlign: 'center' }}>Visible</th><th>Acciones</th></tr></thead>
                   <tbody>
                     {players.map(p => (
                       <tr key={p.id} style={{ opacity: p.hidden ? 0.5 : 1 }}>
                         {editingPlayerId === p.id ? (
                           <>
                             <td><input type="text" className="input-text" style={{ padding: '0.5rem' }} value={editPlayerName} onChange={e => setEditPlayerName(e.target.value)} /></td>
+                            <td><input type="number" className="input-text" style={{ padding: '0.5rem', width: '70px' }} value={editPlayerAge} onChange={e => setEditPlayerAge(e.target.value)} placeholder="Años" /></td>
                             <td><input type="number" className="input-text" style={{ padding: '0.5rem', width: '80px' }} value={editPlayerGP} onChange={e => setEditPlayerGP(parseInt(e.target.value))} /></td>
                             <td></td>
                             <td style={{ display: 'flex', gap: '0.5rem' }}>
@@ -189,6 +197,7 @@ export default function AdminClubDashboard() {
                               {p.name}
                               {p.hidden === 1 && <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>oculto</span>}
                             </td>
+                            <td>{p.age || <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>-</span>}</td>
                             <td style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>{p.grand_prix_points}</td>
                             <td style={{ textAlign: 'center' }}>
                               <button
@@ -201,7 +210,7 @@ export default function AdminClubDashboard() {
                               </button>
                             </td>
                             <td style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button className="btn btn-secondary" style={{ padding: '0.5rem' }} onClick={() => { setEditingPlayerId(p.id); setEditPlayerName(p.name); setEditPlayerGP(p.grand_prix_points); }}><Edit2 size={16} /></button>
+                              <button className="btn btn-secondary" style={{ padding: '0.5rem' }} onClick={() => { setEditingPlayerId(p.id); setEditPlayerName(p.name); setEditPlayerAge(p.age || ''); setEditPlayerGP(p.grand_prix_points); }}><Edit2 size={16} /></button>
                               <button className="btn btn-danger" style={{ padding: '0.5rem' }} onClick={() => handleDeletePlayer(p.id)}><Trash2 size={16} /></button>
                             </td>
                           </>
