@@ -500,6 +500,42 @@ app.post('/api/tournaments', async (req, res) => {
         res.status(500).json({ error: 'Database error' });
     }
 });
+// PUT update tournament name and adminKey
+app.put('/api/tournaments/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, adminKey } = req.body;
+    if (!name || name.trim() === '' || !adminKey || adminKey.trim() === '') {
+        return res.status(400).json({ error: 'Name and adminKey are required' });
+    }
+    try {
+        // Regenerate unique slug based on new name
+        let baseSlug = slugify(name);
+        let slug = baseSlug || 'torneo-' + id.substring(0, 8);
+        let isUnique = false;
+        let attempt = 0;
+        while (!isUnique) {
+            const check = await db_1.db.execute({
+                sql: 'SELECT id FROM tournaments WHERE slug = ? AND id != ?',
+                args: [slug, id]
+            });
+            if (check.rows.length === 0) {
+                isUnique = true;
+            }
+            else {
+                attempt++;
+                slug = `${baseSlug}-${attempt}`;
+            }
+        }
+        await db_1.db.execute({
+            sql: 'UPDATE tournaments SET name = ?, slug = ?, admin_key = ? WHERE id = ?',
+            args: [name.trim(), slug, adminKey.trim(), id]
+        });
+        res.json({ success: true, slug });
+    }
+    catch (error) {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
 app.get('/api/tournaments/:idOrSlug', async (req, res) => {
     const { idOrSlug } = req.params;
     try {

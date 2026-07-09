@@ -29,6 +29,11 @@ export default function AdminClubDashboard() {
   const [clubName, setClubName] = useState('');
   const [clubDesc, setClubDesc] = useState('');
 
+  // Tournament Editing State
+  const [editingTournamentId, setEditingTournamentId] = useState<string | null>(null);
+  const [editTournamentName, setEditTournamentName] = useState('');
+  const [editTournamentKey, setEditTournamentKey] = useState('');
+
   useEffect(() => {
     loadData();
   }, [clubId]);
@@ -130,6 +135,21 @@ export default function AdminClubDashboard() {
       });
       setNewTournamentName('');
       setNewTournamentAdminKey('');
+      loadData();
+    } catch (e: any) { alert(e.message); }
+  }
+
+  async function handleEditTournament(id: string) {
+    if (!editTournamentName.trim() || !editTournamentKey.trim()) {
+      alert('El nombre y la clave no pueden estar vacíos.');
+      return;
+    }
+    try {
+      await fetchApi(`/tournaments/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: editTournamentName, adminKey: editTournamentKey })
+      });
+      setEditingTournamentId(null);
       loadData();
     } catch (e: any) { alert(e.message); }
   }
@@ -288,17 +308,37 @@ export default function AdminClubDashboard() {
             <div className="card-panel" style={{ flex: 2, minWidth: '320px' }}>
               <h2 className="card-title">Historial de Torneos</h2>
               <div className="table-wrapper">
-                <table className="standings-table">
-                  <thead><tr><th>Torneo</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <table className="standings-table table-compact">
+                  <thead><tr><th>Torneo</th><th>Clave Árbitro</th><th>Estado</th><th>Acciones</th></tr></thead>
                   <tbody>
                     {tournaments.map(t => (
                       <tr key={t.id}>
-                        <td style={{ fontWeight: '500' }}>{t.name}</td>
-                        <td><span className={`status-badge status-${t.status}`}>{t.status}</span></td>
-                        <td style={{ display: 'flex', gap: '0.5rem' }}>
-                          <Link to={`/tournament/${t.id}`} className="btn btn-secondary" style={{ padding: '0.5rem' }}>Entrar</Link>
-                          <button className="btn btn-danger" style={{ padding: '0.5rem' }} onClick={() => handleDeleteTournament(t.id)}><Trash2 size={16} /></button>
-                        </td>
+                        {editingTournamentId === t.id ? (
+                          <>
+                            <td><input type="text" className="input-text" style={{ padding: '0.4rem', minWidth: '120px', fontSize: '0.85rem' }} value={editTournamentName} onChange={e => setEditTournamentName(e.target.value)} /></td>
+                            <td><input type="text" className="input-text" style={{ padding: '0.4rem', minWidth: '90px', fontSize: '0.85rem' }} value={editTournamentKey} onChange={e => setEditTournamentKey(e.target.value)} /></td>
+                            <td><span className={`status-badge status-${t.status}`}>{t.status}</span></td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                <button className="btn btn-primary" style={{ padding: '0.4rem', flexShrink: 0 }} onClick={() => handleEditTournament(t.id)}><Save size={14}/></button>
+                                <button className="btn btn-secondary" style={{ padding: '0.4rem', flexShrink: 0 }} onClick={() => setEditingTournamentId(null)}>X</button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td style={{ fontWeight: '500', fontSize: '0.9rem', verticalAlign: 'middle' }}>{t.name}</td>
+                            <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', verticalAlign: 'middle', fontFamily: 'monospace' }}>●●●●●●</td>
+                            <td style={{ verticalAlign: 'middle' }}><span className={`status-badge status-${t.status}`}>{t.status === 'created' ? 'Borrador' : t.status === 'in_progress' ? 'En Curso' : 'Finalizado'}</span></td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                <Link to={`/tournament/${t.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', flexShrink: 0 }}>Entrar</Link>
+                                <button className="btn btn-secondary" style={{ padding: '0.4rem', flexShrink: 0 }} onClick={() => { setEditingTournamentId(t.id); setEditTournamentName(t.name); setEditTournamentKey(''); }} title="Editar Torneo"><Edit2 size={14} /></button>
+                                <button className="btn btn-danger" style={{ padding: '0.4rem', flexShrink: 0 }} onClick={() => handleDeleteTournament(t.id)}><Trash2 size={14} /></button>
+                              </div>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>
