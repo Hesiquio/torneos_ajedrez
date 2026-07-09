@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchApi } from '../api';
-import { Shield, ChevronLeft, Trash2, Edit2, Plus, Swords, Save } from 'lucide-react';
+import { Shield, ChevronLeft, Trash2, Edit2, Plus, Save, Users, Trophy, Settings } from 'lucide-react';
 
 export default function AdminClubDashboard() {
   const { clubId } = useParams();
@@ -133,10 +133,16 @@ export default function AdminClubDashboard() {
       </header>
 
       <main className="main-content">
-        <div className="tabs">
-          <button className={`tab-btn ${activeTab === 'jugadores' ? 'active' : ''}`} onClick={() => setActiveTab('jugadores')}>Jugadores & GP</button>
-          <button className={`tab-btn ${activeTab === 'torneos' ? 'active' : ''}`} onClick={() => setActiveTab('torneos')}>Torneos Oficiales</button>
-          <button className={`tab-btn ${activeTab === 'config' ? 'active' : ''}`} onClick={() => setActiveTab('config')}>Configuración</button>
+        <div className="tabs" style={{ flexWrap: 'wrap' }}>
+          <button className={`tab-btn ${activeTab === 'jugadores' ? 'active' : ''}`} onClick={() => setActiveTab('jugadores')}>
+            <Users size={16} /> Jugadores & GP
+          </button>
+          <button className={`tab-btn ${activeTab === 'torneos' ? 'active' : ''}`} onClick={() => setActiveTab('torneos')}>
+            <Trophy size={16} /> Torneos Oficiales
+          </button>
+          <button className={`tab-btn ${activeTab === 'config' ? 'active' : ''}`} onClick={() => setActiveTab('config')}>
+            <Settings size={16} /> Configuración
+          </button>
         </div>
 
         {activeTab === 'jugadores' && (
