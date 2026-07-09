@@ -12,127 +12,90 @@ export default function Home() {
 
   return (
     <div className="layout-container">
-      {/* Hero Section (No sticky header) */}
+      {/* Hero Section */}
       <section style={{ 
         textAlign: 'center', 
-        padding: '5rem 1rem 4rem 1rem', 
+        padding: '3rem 1rem 2rem 1rem', 
         position: 'relative',
-        background: 'radial-gradient(circle at center, rgba(226, 184, 92, 0.08) 0%, transparent 70%)'
+        background: 'radial-gradient(circle at center, rgba(226, 184, 92, 0.05) 0%, transparent 70%)'
       }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <span style={{
             display: 'inline-block',
-            padding: '0.35rem 1rem',
-            background: 'rgba(226, 184, 92, 0.1)',
-            border: '1px solid rgba(226, 184, 92, 0.3)',
-            borderRadius: '20px',
+            padding: '0.25rem 0.6rem',
+            background: 'rgba(226, 184, 92, 0.08)',
+            border: '1px solid rgba(226, 184, 92, 0.25)',
+            borderRadius: '4px', // Square design
             color: 'var(--color-primary)',
-            fontSize: '0.85rem',
+            fontSize: '0.75rem',
             fontWeight: '700',
             textTransform: 'uppercase',
-            letterSpacing: '1.5px',
-            marginBottom: '1.5rem'
+            letterSpacing: '1px',
+            marginBottom: '1rem'
           }}>
             Software Profesional de Ajedrez
           </span>
-          <h1 className="brand-title" style={{ fontSize: '3.8rem', marginBottom: '1.5rem', letterSpacing: '-0.03em', lineHeight: '1.1' }}>
+          <h1 className="brand-title" style={{ fontSize: '3rem', marginBottom: '0.75rem', letterSpacing: '-0.02em', lineHeight: '1.1' }}>
             Plataforma Global de Ajedrez
           </h1>
-          <p className="brand-subtitle" style={{ fontSize: '1.25rem', maxWidth: '650px', margin: '0 auto', color: 'var(--color-text-secondary)', lineHeight: '1.6' }}>
-            El ecosistema definitivo para torneos Suizos y ligas Grand Prix acumulativas. Únete a un club oficial o compite en la zona libre.
+          <p className="brand-subtitle" style={{ fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
+            El ecosistema definitivo para torneos Suizos y ligas Grand Prix acumulativas.
           </p>
         </div>
       </section>
 
-      {/* Main Marketing Features */}
-      <section style={{ maxWidth: '1100px', margin: '0 auto 5rem auto', padding: '0 5%' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
-          
-          <div className="card-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.01)' }}>
-            <div style={{ background: 'rgba(226, 184, 92, 0.08)', width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Swords size={24} color="var(--color-primary)" />
-            </div>
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', fontWeight: '700' }}>Sistema Suizo Inteligente</h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', lineHeight: '1.5' }}>
-              Algoritmo de emparejamiento suizo automático con desempate Buchholz de alta precisión. Genera las rondas al instante y sin errores de cálculo.
-            </p>
-          </div>
-
-          <div className="card-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.01)' }}>
-            <div style={{ background: 'rgba(16, 185, 129, 0.08)', width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Award size={24} color="var(--color-success)" />
-            </div>
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', fontWeight: '700' }}>Ligas Grand Prix Acumulativas</h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', lineHeight: '1.5' }}>
-              Los torneos de tu club otorgan puntos GP para el ranking global del club de forma integrada. Ránking denso automático con soporte para empates.
-            </p>
-          </div>
-
-          <div className="card-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.01)' }}>
-            <div style={{ background: 'rgba(59, 130, 246, 0.08)', width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Shield size={24} color="var(--color-info)" />
-            </div>
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', fontWeight: '700' }}>Privacidad Personalizada</h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', lineHeight: '1.5' }}>
-              El administrador del club puede ocultar perfiles del ranking público con un solo click. Perfecto para adultos que no quieren salir en la tabla pública.
-            </p>
-          </div>
-
-        </div>
-      </section>
-
-      {/* Main Action Panels */}
-      <main className="main-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3rem', paddingTop: '0', maxWidth: '900px' }}>
+      {/* Main Content Area */}
+      <main className="main-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', paddingTop: '0', maxWidth: '900px', margin: '0 auto' }}>
         
-        {/* Clubs List */}
-        <div className="card-panel" style={{ width: '100%', padding: '2.5rem' }}>
-          <h2 className="card-title" style={{ fontSize: '1.6rem', marginBottom: '2rem' }}>
-            <Users size={24} color="var(--color-primary)" /> Clubes Registrados
+        {/* 1. Clubs List (Priority) */}
+        <div className="card-panel" style={{ width: '100%', padding: '1.75rem', borderRadius: '8px' }}>
+          <h2 className="card-title" style={{ fontSize: '1.35rem', marginBottom: '1.25rem' }}>
+            <Users size={20} color="var(--color-primary)" /> Clubes Registrados
           </h2>
-          <div className="tournament-grid">
+          <div className="tournament-grid" style={{ gap: '1rem' }}>
             {clubs.map(c => (
-              <Link to={`/club/${c.slug || c.id}`} key={c.id} className="tournament-card" style={{ padding: '1.5rem 2rem' }}>
-                <div className="tournament-card-header" style={{ marginBottom: '0.5rem' }}>
-                  <h3 className="tournament-card-title">{c.name}</h3>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--color-text-secondary)', marginTop: '0.5rem' }}>
-                  <span style={{ fontSize: '0.9rem' }}>Entrar al Lobby del Club</span>
-                  <ChevronRight size={18} color="var(--color-primary)" />
+              <Link to={`/club/${c.slug || c.id}`} key={c.id} className="tournament-card" style={{ padding: '1rem 1.5rem', borderRadius: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 className="tournament-card-title" style={{ fontSize: '1.1rem', margin: 0 }}>{c.name}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--color-primary)' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '500' }}>Entrar</span>
+                    <ChevronRight size={16} />
+                  </div>
                 </div>
               </Link>
             ))}
-            {clubs.length === 0 && <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', width: '100%', padding: '2rem 0' }}>No hay clubes registrados todavía.</p>}
+            {clubs.length === 0 && <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', width: '100%', padding: '1rem 0', fontSize: '0.9rem' }}>No hay clubes registrados todavía.</p>}
           </div>
         </div>
 
-        {/* Free Zone & Marketing CTA */}
-        <div style={{ display: 'flex', gap: '2rem', width: '100%', flexWrap: 'wrap' }}>
+        {/* 2. Free Zone & CTA Row */}
+        <div style={{ display: 'flex', gap: '1.5rem', width: '100%', flexWrap: 'wrap' }}>
           
-          <div className="card-panel" style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05), transparent)' }}>
+          <div className="card-panel" style={{ flex: 1, minWidth: '280px', padding: '1.5rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.03), transparent)' }}>
             <div>
-              <h2 className="card-title" style={{ fontSize: '1.5rem', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
-                <Globe size={22} color="var(--color-info)" /> Zona Libre
+              <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '0.75rem', borderColor: 'rgba(59, 130, 246, 0.15)' }}>
+                <Globe size={18} color="var(--color-info)" /> Zona Libre
               </h2>
-              <p style={{ marginBottom: '2rem', fontSize: '0.95rem', color: 'var(--color-text-secondary)', lineHeight: '1.6' }}>
-                Explora o participa en torneos libres sin asociar a ningún club. Ideal para prácticas informales o partidas amistosas.
+              <p style={{ marginBottom: '1.25rem', fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
+                Participa en torneos suizos independientes sin pertenecer a ningún club oficial.
               </p>
             </div>
-            <Link to="/public" className="btn btn-secondary" style={{ width: '100%', padding: '0.9rem' }}>
+            <Link to="/public" className="btn btn-secondary" style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', borderRadius: '4px' }}>
               Entrar al Lobby Público
             </Link>
           </div>
 
-          <div className="card-panel" style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'linear-gradient(135deg, rgba(226, 184, 92, 0.05), transparent)', border: '1px solid rgba(226, 184, 92, 0.15)' }}>
+          <div className="card-panel" style={{ flex: 1, minWidth: '280px', padding: '1.5rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'linear-gradient(135deg, rgba(226, 184, 92, 0.03), transparent)', border: '1px solid rgba(226, 184, 92, 0.1)' }}>
             <div>
-              <h2 className="card-title" style={{ fontSize: '1.5rem', borderColor: 'rgba(226, 184, 92, 0.2)' }}>
-                <Trophy size={22} color="var(--color-primary)" /> ¿Quieres tu propio Club?
+              <h2 className="card-title" style={{ fontSize: '1.25rem', marginBottom: '0.75rem', borderColor: 'rgba(226, 184, 92, 0.15)' }}>
+                <Trophy size={18} color="var(--color-primary)" /> ¿Quieres tu propio Club?
               </h2>
-              <p style={{ marginBottom: '2rem', fontSize: '0.95rem', color: 'var(--color-text-secondary)', lineHeight: '1.6' }}>
-                Si eres organizador de torneos o tienes un club físico, te proporcionamos credenciales para que gestiones tus propios rankings, GP y jugadores.
+              <p style={{ marginBottom: '1.25rem', fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
+                Obtén credenciales de administración para gestionar tus rankings de club, GP y jugadores.
               </p>
             </div>
-            <a href="https://wa.me/529821004158?text=Hola,%20estoy%20interesado%20en%20crear%20un%20nuevo%20club%20en%20la%20plataforma%20de%20ajedrez" target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ width: '100%', padding: '0.9rem' }}>
-              <Mail size={18} /> Contactar Soporte
+            <a href="https://wa.me/529821004158?text=Hola,%20estoy%20interesado%20en%20crear%20un%20nuevo%20club%20en%20la%20plataforma%20de%20ajedrez" target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', borderRadius: '4px' }}>
+              <Mail size={16} /> Contactar Soporte
             </a>
           </div>
 
@@ -140,8 +103,45 @@ export default function Home() {
 
       </main>
 
-      <footer style={{ textAlign: 'center', padding: '3rem', marginTop: '5rem', borderTop: '1px solid var(--border-light)' }}>
-        <Link to="/admin" style={{ color: 'var(--color-text-muted)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '500', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = 'var(--color-primary)'} onMouseOut={(e) => e.currentTarget.style.color = 'var(--color-text-muted)'}>
+      {/* 3. Marketing Features (At the bottom) */}
+      <section style={{ maxWidth: '900px', margin: '3rem auto 3rem auto', padding: '0 1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+          
+          <div className="card-panel" style={{ padding: '1.5rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(255,255,255,0.01)' }}>
+            <div style={{ background: 'rgba(226, 184, 92, 0.06)', width: '36px', height: '36px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Swords size={18} color="var(--color-primary)" />
+            </div>
+            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', fontWeight: '700' }}>Sistema Suizo Inteligente</h3>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: '1.4' }}>
+              Algoritmo de emparejamiento automático por ronda con desempates Buchholz integrados en tiempo real.
+            </p>
+          </div>
+
+          <div className="card-panel" style={{ padding: '1.5rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(255,255,255,0.01)' }}>
+            <div style={{ background: 'rgba(16, 185, 129, 0.06)', width: '36px', height: '36px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Award size={18} color="var(--color-success)" />
+            </div>
+            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', fontWeight: '700' }}>Ligas Grand Prix</h3>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: '1.4' }}>
+              Los torneos otorgan puntos automáticos a la liga acumulativa de tu club bajo un ránking denso de empates.
+            </p>
+          </div>
+
+          <div className="card-panel" style={{ padding: '1.5rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(255,255,255,0.01)' }}>
+            <div style={{ background: 'rgba(59, 130, 246, 0.06)', width: '36px', height: '36px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Shield size={18} color="var(--color-info)" />
+            </div>
+            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', fontWeight: '700' }}>Control de Privacidad</h3>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: '1.4' }}>
+              El administrador del club puede ocultar perfiles específicos del ranking de la liga pública en cualquier momento.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      <footer style={{ textAlign: 'center', padding: '2rem 1rem', marginTop: '2rem', borderTop: '1px solid var(--border-light)' }}>
+        <Link to="/admin" style={{ color: 'var(--color-text-muted)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: '500', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = 'var(--color-primary)'} onMouseOut={(e) => e.currentTarget.style.color = 'var(--color-text-muted)'}>
           Acceso para Administradores
         </Link>
       </footer>
