@@ -5,10 +5,29 @@ import { Link } from 'react-router-dom';
 
 export default function Home() {
   const [clubs, setClubs] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   useEffect(() => {
     fetchApi('/clubs').then(setClubs).catch(console.error);
   }, []);
+
+  // Filter clubs based on search input
+  const filteredClubs = clubs.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredClubs.length / itemsPerPage) || 1;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentClubs = filteredClubs.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Reset page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   return (
     <div className="layout-container">
@@ -49,11 +68,26 @@ export default function Home() {
         
         {/* 1. Clubs List (Priority) */}
         <div className="card-panel" style={{ width: '100%', padding: '1.75rem', borderRadius: '8px' }}>
-          <h2 className="card-title" style={{ fontSize: '1.35rem', marginBottom: '1.25rem' }}>
-            <Users size={20} color="var(--color-primary)" /> Clubes Registrados
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+            <h2 className="card-title" style={{ fontSize: '1.35rem', margin: 0, border: 'none', padding: 0 }}>
+              <Users size={20} color="var(--color-primary)" /> Clubes Registrados
+            </h2>
+            
+            {/* Search Input */}
+            {clubs.length > 0 && (
+              <input 
+                type="text" 
+                placeholder="🔍 Buscar club..." 
+                className="input-text" 
+                style={{ padding: '0.45rem 0.8rem', width: '200px', fontSize: '0.85rem', borderRadius: '4px' }}
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            )}
+          </div>
+
           <div className="tournament-grid" style={{ gap: '1rem' }}>
-            {clubs.map(c => (
+            {currentClubs.map(c => (
               <Link to={`/club/${c.slug || c.id}`} key={c.id} className="tournament-card" style={{ padding: '1rem 1.5rem', borderRadius: '6px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 className="tournament-card-title" style={{ fontSize: '1.1rem', margin: 0 }}>{c.name}</h3>
@@ -64,8 +98,37 @@ export default function Home() {
                 </div>
               </Link>
             ))}
-            {clubs.length === 0 && <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', width: '100%', padding: '1rem 0', fontSize: '0.9rem' }}>No hay clubes registrados todavía.</p>}
+            {filteredClubs.length === 0 && (
+              <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', width: '100%', padding: '1rem 0', fontSize: '0.9rem' }}>
+                {clubs.length === 0 ? 'No hay clubes registrados todavía.' : 'No se encontraron clubes.'}
+              </p>
+            )}
           </div>
+
+          {/* Clubs Pagination Controls */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', borderTop: '1px solid var(--border-light)', paddingTop: '1rem' }}>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: '4px' }}
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              >
+                ◀ Anterior
+              </button>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                Pág. {currentPage} de {totalPages}
+              </span>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: '4px' }}
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              >
+                Siguiente ▶
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 2. Free Zone & CTA Row */}
