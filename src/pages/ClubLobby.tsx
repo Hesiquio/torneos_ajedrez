@@ -80,22 +80,33 @@ export default function ClubLobby() {
                   </tr>
                 </thead>
                 <tbody>
-                  {players.length > 0 ? players.map((p, i) => (
-                    <tr key={p.id}>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
-                        {i === 0 ? <span className="rank-medal" title="Oro">🥇</span> :
-                         i === 1 ? <span className="rank-medal" title="Plata">🥈</span> :
-                         i === 2 ? <span className="rank-medal" title="Bronce">🥉</span> :
-                         <span style={{ color: 'var(--color-text-muted)' }}>{i + 1}</span>}
-                      </td>
-                      <td style={{ fontWeight: i < 3 ? '600' : '400', color: i < 3 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
-                        {p.name}
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--color-primary)' }}>
-                        {p.grand_prix_points} pts
-                      </td>
-                    </tr>
-                  )) : (
+                  {players.length > 0 ? (() => {
+                    // Build tied ranking: players with same GP share the same rank
+                    let rank = 1;
+                    return players.map((p, i) => {
+                      if (i > 0 && p.grand_prix_points < players[i - 1].grand_prix_points) {
+                        rank = i + 1; // jump rank by how many tied above
+                      }
+                      const currentRank = rank;
+                      const isTop3 = currentRank <= 3;
+                      return (
+                        <tr key={p.id}>
+                          <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                            {currentRank === 1 ? <span className="rank-medal" title="Oro">🥇</span> :
+                             currentRank === 2 ? <span className="rank-medal" title="Plata">🥈</span> :
+                             currentRank === 3 ? <span className="rank-medal" title="Bronce">🥉</span> :
+                             <span style={{ color: 'var(--color-text-muted)' }}>{currentRank}</span>}
+                          </td>
+                          <td style={{ fontWeight: isTop3 ? '600' : '400', color: isTop3 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)' }}>
+                            {p.name}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--color-primary)' }}>
+                            {p.grand_prix_points} pts
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })() : (
                     <tr>
                       <td colSpan={3} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
                         Aún no hay jugadores registrados.
