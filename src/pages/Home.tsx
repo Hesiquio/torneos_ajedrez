@@ -107,33 +107,39 @@ export default function Home() {
       <section style={{ maxWidth: '900px', margin: '3rem auto 3rem auto', padding: '0 1rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
           
-          <div className="card-panel" style={{ padding: '1.5rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(255,255,255,0.01)' }}>
-            <div style={{ background: 'rgba(226, 184, 92, 0.06)', width: '36px', height: '36px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Swords size={18} color="var(--color-primary)" />
+          <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.01)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: 'rgba(226, 184, 92, 0.06)', width: '32px', height: '32px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Swords size={16} color="var(--color-primary)" />
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.05rem', fontWeight: '700', margin: 0 }}>Suizo Inteligente</h3>
             </div>
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', fontWeight: '700' }}>Sistema Suizo Inteligente</h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: '1.4' }}>
-              Algoritmo de emparejamiento automático por ronda con desempates Buchholz integrados en tiempo real.
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: '1.4', margin: 0 }}>
+              Algoritmo de emparejamiento automático por ronda con desempates Buchholz integrados.
             </p>
           </div>
 
-          <div className="card-panel" style={{ padding: '1.5rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(255,255,255,0.01)' }}>
-            <div style={{ background: 'rgba(16, 185, 129, 0.06)', width: '36px', height: '36px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Award size={18} color="var(--color-success)" />
+          <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.01)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.06)', width: '32px', height: '32px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Award size={18} color="var(--color-success)" />
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.05rem', fontWeight: '700', margin: 0 }}>Ligas Grand Prix</h3>
             </div>
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', fontWeight: '700' }}>Ligas Grand Prix</h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: '1.4' }}>
-              Los torneos otorgan puntos automáticos a la liga acumulativa de tu club bajo un ránking denso de empates.
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: '1.4', margin: 0 }}>
+              Los torneos otorgan puntos automáticos a la liga acumulativa de tu club bajo ranking denso.
             </p>
           </div>
 
-          <div className="card-panel" style={{ padding: '1.5rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(255,255,255,0.01)' }}>
-            <div style={{ background: 'rgba(59, 130, 246, 0.06)', width: '36px', height: '36px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Shield size={18} color="var(--color-info)" />
+          <div className="card-panel" style={{ padding: '1.25rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.01)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: 'rgba(59, 130, 246, 0.06)', width: '32px', height: '32px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Shield size={18} color="var(--color-info)" />
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.05rem', fontWeight: '700', margin: 0 }}>Control de Privacidad</h3>
             </div>
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', fontWeight: '700' }}>Control de Privacidad</h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: '1.4' }}>
-              El administrador del club puede ocultar perfiles específicos del ranking de la liga pública en cualquier momento.
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: '1.4', margin: 0 }}>
+              El administrador del club puede ocultar perfiles específicos del ranking de la liga pública.
             </p>
           </div>
 
