@@ -81,11 +81,11 @@ export default function ClubLobby() {
                 </thead>
                 <tbody>
                   {players.length > 0 ? (() => {
-                    // Build tied ranking: players with same GP share the same rank
+                    // Dense ranking: tied players share rank, next rank is always +1
                     let rank = 1;
                     return players.map((p, i) => {
                       if (i > 0 && p.grand_prix_points < players[i - 1].grand_prix_points) {
-                        rank = i + 1; // jump rank by how many tied above
+                        rank = rank + 1;
                       }
                       const currentRank = rank;
                       const isTop3 = currentRank <= 3;
