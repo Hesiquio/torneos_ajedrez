@@ -1,29 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchApi } from '../api';
-import { ChevronLeft, Trophy, Calendar, User, Award, Shield } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trophy, Calendar, User, Award, Shield } from 'lucide-react';
 import { getPlayerRank, CHESS_RANKS } from '../utils/ranks';
 
 export default function PlayerProfile() {
   const { clubId, playerId } = useParams();
   const [player, setPlayer] = useState<any>(null);
-  const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Pagination State for History
+  const [matches, setMatches] = useState<any[]>([]);
+  const [totalMatches, setTotalMatches] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const limit = 5;
 
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  // Load static profile details (only once)
   useEffect(() => {
-    Promise.all([
-      fetchApi(`/players/${playerId}/profile`),
-      fetchApi(`/players/${playerId}/history`)
-    ])
-      .then(([pData, hData]) => {
-        setPlayer(pData);
-        setHistory(hData);
-      })
+    fetchApi(`/players/${playerId}/profile`)
+      .then(setPlayer)
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingProfile(false));
   }, [playerId]);
 
-  if (loading) {
+  // Load matches history (runs every time offset changes)
+  useEffect(() => {
+    setLoadingHistory(true);
+    fetchApi(`/players/${playerId}/history?limit=${limit}&offset=${offset}`)
+      .then((res: any) => {
+        setMatches(res.matches || []);
+        setTotalMatches(res.totalMatches || 0);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingHistory(false));
+  }, [playerId, offset]);
+
+  if (loadingProfile) {
     return <div className="layout-container" style={{ justifyContent: 'center', alignItems: 'center' }}>Cargando Perfil...</div>;
   }
 
@@ -51,6 +65,18 @@ export default function PlayerProfile() {
     progressPercent = Math.min(100, Math.max(0, (rangeCurrent / rangeTotal) * 100));
     pointsNeeded = nextRank.minPoints - gpPoints;
   }
+
+  // Pagination navigation helpers
+  const handlePrevPage = () => {
+    if (offset >= limit) setOffset(prev => prev - limit);
+  };
+
+  const handleNextPage = () => {
+    if (offset + limit < totalMatches) setOffset(prev => prev + limit);
+  };
+
+  const currentPageNum = Math.floor(offset / limit) + 1;
+  const totalPages = Math.ceil(totalMatches / limit) || 1;
 
   return (
     <div className="layout-container">
@@ -134,7 +160,35 @@ export default function PlayerProfile() {
         </div>
 
         {/* Right Side: Game History */}
-        <div style={{ flex: 1.5 }}>
+        <div style={{ flex: 1.5, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
+          {/* Pagination Top Controls */}
+          {totalMatches > limit && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.5rem' }}>
+              <button
+                className="btn btn-secondary"
+                style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem' }}
+                disabled={offset <= 0 || loadingHistory}
+                onClick={handlePrevPage}
+              >
+                <ChevronLeft size={14} /> Recientes
+              </button>
+              
+              <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: '600' }}>
+                Pág. {currentPageNum} de {totalPages} ({totalMatches} partidas)
+              </span>
+
+              <button
+                className="btn btn-secondary"
+                style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem' }}
+                disabled={offset + limit >= totalMatches || loadingHistory}
+                onClick={handleNextPage}
+              >
+                Antiguas <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+
           <div className="card-panel">
             <h2 className="card-title">Historial de Partidas</h2>
             <div className="table-wrapper">
@@ -148,7 +202,13 @@ export default function PlayerProfile() {
                   </tr>
                 </thead>
                 <tbody>
-                  {history.length > 0 ? history.map(m => {
+                  {loadingHistory ? (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
+                        Cargando partidas...
+                      </td>
+                    </tr>
+                  ) : matches.length > 0 ? matches.map(m => {
                     const isWhite = m.white_player_id === playerId;
                     const opponent = isWhite ? m.black_player_name : m.white_player_name;
                     

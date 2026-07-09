@@ -221,6 +221,7 @@ app.delete('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
 });
 app.get('/api/clubs/:idOrSlug/history', async (req, res) => {
     const { idOrSlug } = req.params;
+    const page = parseInt(req.query.page) || 0; // index of the tournament (0 = most recent)
     try {
         // Resolve actual club ID
         const clubRes = await db_1.db.execute({
@@ -228,6 +229,17 @@ app.get('/api/clubs/:idOrSlug/history', async (req, res) => {
             args: [idOrSlug, idOrSlug]
         });
         const actualClubId = clubRes.rows.length > 0 ? String(clubRes.rows[0].id) : idOrSlug;
+        // Get list of tournaments for this club
+        const tRes = await db_1.db.execute({
+            sql: "SELECT id, name, created_at FROM tournaments WHERE club_id = ? AND status = 'completed' ORDER BY created_at DESC",
+            args: [actualClubId]
+        });
+        const totalTournaments = tRes.rows.length;
+        if (totalTournaments === 0 || page >= totalTournaments || page < 0) {
+            return res.json({ matches: [], totalTournaments, currentPage: page });
+        }
+        const selectedTournament = tRes.rows[page];
+        // Fetch matches only for the selected tournament
         const rs = await db_1.db.execute({
             sql: `SELECT m.id, m.result, m.is_bye,
             t.name as tournament_name, t.created_at as tournament_date,
@@ -238,12 +250,17 @@ app.get('/api/clubs/:idOrSlug/history', async (req, res) => {
             JOIN rounds r ON m.round_id = r.id
             JOIN players w ON m.white_player_id = w.id
             LEFT JOIN players b ON m.black_player_id = b.id
-            WHERE t.club_id = ? AND m.result IS NOT NULL AND m.is_bye = 0
-            ORDER BY t.created_at DESC, r.round_number ASC, m.id ASC
-            LIMIT 50`,
-            args: [actualClubId]
+            WHERE t.id = ? AND m.result IS NOT NULL AND m.is_bye = 0
+            ORDER BY r.round_number ASC, m.id ASC`,
+            args: [selectedTournament.id]
         });
-        res.json(rs.rows);
+        res.json({
+            matches: rs.rows,
+            totalTournaments,
+            currentPage: page,
+            tournamentName: selectedTournament.name,
+            tournamentDate: selectedTournament.created_at
+        });
     }
     catch (error) {
         res.status(500).json({ error: error.message });
@@ -299,10 +316,19 @@ app.get('/api/players/:id/profile', async (req, res) => {
         res.status(500).json({ error: 'Database error' });
     }
 });
-// GET single player matches history
+// GET single player matches history (paginated)
 app.get('/api/players/:id/history', async (req, res) => {
     const { id } = req.params;
+    const limit = parseInt(req.query.limit) || 5;
+    const offset = parseInt(req.query.offset) || 0;
     try {
+        // Get total matches count for this player
+        const countRes = await db_1.db.execute({
+            sql: `SELECT COUNT(*) as total FROM matches 
+            WHERE (white_player_id = ? OR black_player_id = ?) AND result IS NOT NULL`,
+            args: [id, id]
+        });
+        const totalMatches = Number(countRes.rows[0].total || 0);
         const result = await db_1.db.execute({
             sql: `SELECT m.id, m.result, m.is_bye, m.white_player_id, m.black_player_id,
             t.name as tournament_name, t.created_at as tournament_date,
@@ -314,10 +340,11 @@ app.get('/api/players/:id/history', async (req, res) => {
             JOIN players w ON m.white_player_id = w.id
             LEFT JOIN players b ON m.black_player_id = b.id
             WHERE (m.white_player_id = ? OR m.black_player_id = ?) AND m.result IS NOT NULL
-            ORDER BY t.created_at DESC, r.round_number DESC, m.id DESC`,
-            args: [id, id]
+            ORDER BY t.created_at DESC, r.round_number DESC, m.id DESC
+            LIMIT ? OFFSET ?`,
+            args: [id, id, limit, offset]
         });
-        res.json(result.rows);
+        res.json({ matches: result.rows, totalMatches, limit, offset });
     }
     catch (error) {
         res.status(500).json({ error: 'Database error' });
