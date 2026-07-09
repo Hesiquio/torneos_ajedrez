@@ -112,7 +112,7 @@ export default function Home() {
               <div style={{ background: 'rgba(226, 184, 92, 0.06)', width: '32px', height: '32px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Swords size={16} color="var(--color-primary)" />
               </div>
-              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.05rem', fontWeight: '700', margin: 0 }}>Suizo Inteligente</h3>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.05rem', fontWeight: '700', margin: 0 }}>Sistema Suizo</h3>
             </div>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', lineHeight: '1.4', margin: 0 }}>
               Algoritmo de emparejamiento automático por ronda con desempates Buchholz integrados.
