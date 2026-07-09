@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchApi } from '../api';
 import { Lock, Unlock, ChevronLeft, RefreshCw, Check, AlertTriangle, ShieldCheck, Trophy } from 'lucide-react';
+import { getPlayerRank } from '../utils/ranks';
 
 export default function TournamentView() {
   const { id } = useParams();
@@ -170,14 +171,39 @@ export default function TournamentView() {
                   {data.standings.map((s:any, idx:number) => {
                     const GP_MAP = [10, 8, 6, 4, 2];
                     const gpEarned = idx < GP_MAP.length ? GP_MAP[idx] : 2;
+                    
+                    // Find matching player details to retrieve their Grand Prix points
+                    const plDetails = data.players?.find((x: any) => x.id === s.id);
+                    const gpPoints = plDetails ? plDetails.grand_prix_points : 0;
+                    const rankInfo = getPlayerRank(gpPoints);
+
                     return (
                       <tr key={s.id}>
                         <td style={{ fontWeight: 'bold' }}>
                           {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
                         </td>
-                        <td>{s.name}</td>
-                        <td style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>{s.points}</td>
-                        <td style={{ color: 'var(--color-text-secondary)' }}>{s.sb}</td>
+                        <td style={{ textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                            <span style={{ fontWeight: '500' }}>{s.name}</span>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.2rem',
+                              fontSize: '0.65rem',
+                              fontWeight: '700',
+                              letterSpacing: '0.5px',
+                              color: rankInfo.color,
+                              background: rankInfo.bg,
+                              padding: '0.05rem 0.35rem',
+                              borderRadius: '4px',
+                              width: 'fit-content'
+                            }}>
+                              {rankInfo.icon} {rankInfo.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ color: 'var(--color-primary)', fontWeight: 'bold', verticalAlign: 'middle' }}>{s.points}</td>
+                        <td style={{ color: 'var(--color-text-secondary)', verticalAlign: 'middle' }}>{s.sb}</td>
                         {t.status === 'completed' && t.is_grand_prix === 1 && (
                           <td style={{ textAlign: 'center' }}>
                             <span style={{

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchApi } from '../api';
 import { Trophy, Swords, Crown, ChevronLeft, Calendar, History, Settings } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import { getPlayerRank } from '../utils/ranks';
 
 export default function ClubLobby() {
   const { clubId } = useParams();
@@ -58,64 +59,82 @@ export default function ClubLobby() {
                   </div>
                 </Link>
               )) : (
-                <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0' }}>No hay torneos activos en este club.</p>
+                <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0' }}>No hay torneos activos en este momento.</p>
               )}
             </div>
           </div>
         </div>
 
-        {/* Lado Derecho: Ranking */}
-        <div>
-          <div className="card-panel" style={{ background: 'linear-gradient(180deg, rgba(226, 184, 92, 0.05), transparent)' }}>
-            <h2 className="card-title" style={{ borderColor: 'rgba(226, 184, 92, 0.2)' }}>
-              <Crown size={24} color="var(--color-primary)" /> Ranking Global (GP)
-            </h2>
-            <div className="table-wrapper">
-              <table className="standings-table">
-                <thead>
+        {/* Lado Derecho: Ranking Global GP */}
+        <div className="card-panel" style={{ alignSelf: 'flex-start' }}>
+          <h2 className="card-title">
+            <Crown size={24} color="var(--color-primary)" /> Tabla General (GP)
+          </h2>
+          <div className="table-wrapper">
+            <table className="standings-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '60px', textAlign: 'center' }}>Pos</th>
+                  <th>Jugador</th>
+                  <th style={{ textAlign: 'right' }}>Puntos GP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {players.length > 0 ? (() => {
+                  // Dense ranking: tied players share rank, next rank is always +1
+                  let rank = 1;
+                  return players.map((p, i) => {
+                    if (i > 0 && p.grand_prix_points < players[i - 1].grand_prix_points) {
+                      rank = rank + 1;
+                    }
+                    const currentRank = rank;
+                    const isTop3 = currentRank <= 3;
+                    const rankInfo = getPlayerRank(p.grand_prix_points);
+
+                    return (
+                      <tr key={p.id}>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                          {currentRank === 1 ? <span className="rank-medal" title="Oro">🥇</span> :
+                           currentRank === 2 ? <span className="rank-medal" title="Plata">🥈</span> :
+                           currentRank === 3 ? <span className="rank-medal" title="Bronce">🥉</span> :
+                           <span style={{ color: 'var(--color-text-muted)' }}>{currentRank}</span>}
+                        </td>
+                        <td style={{ fontWeight: isTop3 ? '600' : '400', color: isTop3 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span>{p.name}</span>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              fontSize: '0.7rem',
+                              fontWeight: '700',
+                              letterSpacing: '0.5px',
+                              color: rankInfo.color,
+                              background: rankInfo.bg,
+                              padding: '0.1rem 0.4rem',
+                              borderRadius: '4px',
+                              width: 'fit-content',
+                              textTransform: 'uppercase'
+                            }}>
+                              {rankInfo.icon} {rankInfo.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--color-primary)', verticalAlign: 'middle' }}>
+                          {p.grand_prix_points} pts
+                        </td>
+                      </tr>
+                    );
+                  });
+                })() : (
                   <tr>
-                    <th style={{ width: '60px', textAlign: 'center' }}>Pos</th>
-                    <th>Jugador</th>
-                    <th style={{ textAlign: 'right' }}>Puntos GP</th>
+                    <td colSpan={3} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
+                      Aún no hay jugadores registrados.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {players.length > 0 ? (() => {
-                    // Dense ranking: tied players share rank, next rank is always +1
-                    let rank = 1;
-                    return players.map((p, i) => {
-                      if (i > 0 && p.grand_prix_points < players[i - 1].grand_prix_points) {
-                        rank = rank + 1;
-                      }
-                      const currentRank = rank;
-                      const isTop3 = currentRank <= 3;
-                      return (
-                        <tr key={p.id}>
-                          <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
-                            {currentRank === 1 ? <span className="rank-medal" title="Oro">🥇</span> :
-                             currentRank === 2 ? <span className="rank-medal" title="Plata">🥈</span> :
-                             currentRank === 3 ? <span className="rank-medal" title="Bronce">🥉</span> :
-                             <span style={{ color: 'var(--color-text-muted)' }}>{currentRank}</span>}
-                          </td>
-                          <td style={{ fontWeight: isTop3 ? '600' : '400', color: isTop3 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                            {p.name}
-                          </td>
-                          <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--color-primary)' }}>
-                            {p.grand_prix_points} pts
-                          </td>
-                        </tr>
-                      );
-                    });
-                  })() : (
-                    <tr>
-                      <td colSpan={3} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
-                        Aún no hay jugadores registrados.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
