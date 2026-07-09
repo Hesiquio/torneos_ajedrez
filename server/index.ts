@@ -196,10 +196,14 @@ app.get('/api/clubs/:id/history', async (req, res) => {
 app.get('/api/players', async (req, res) => {
   try {
     const clubId = req.query.club_id;
-    let sql = 'SELECT * FROM players WHERE club_id IS NULL ORDER BY grand_prix_points DESC, name ASC';
+    // include_hidden=true is only used by admin endpoints
+    const includeHidden = req.query.include_hidden === 'true';
+    const hiddenFilter = includeHidden ? '' : 'AND (hidden IS NULL OR hidden = 0)';
+
+    let sql = `SELECT * FROM players WHERE club_id IS NULL ${hiddenFilter} ORDER BY grand_prix_points DESC, name ASC`;
     let args: any[] = [];
     if (clubId && clubId !== 'null') {
-      sql = 'SELECT * FROM players WHERE club_id = ? ORDER BY grand_prix_points DESC, name ASC';
+      sql = `SELECT * FROM players WHERE club_id = ? ${hiddenFilter} ORDER BY grand_prix_points DESC, name ASC`;
       args = [clubId];
     }
     const result = await db.execute({ sql, args });
@@ -224,7 +228,7 @@ app.post('/api/players', async (req, res) => {
   }
 });
 
-app.put('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
+  app.put('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
   const { id } = req.params;
   const { name, age, grand_prix_points } = req.body;
   if (!name || name.trim() === '') return res.status(400).json({ error: 'Player name is required' });
@@ -242,6 +246,27 @@ app.put('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
       args: [name.trim(), age ? parseInt(age) : null, grand_prix_points !== undefined ? parseFloat(grand_prix_points) : 0, id]
     });
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// Toggle player visibility (admin only)
+app.patch('/api/players/:id/visibility', verifyGlobalAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const pResult = await db.execute({ sql: 'SELECT club_id, hidden FROM players WHERE id = ?', args: [id] });
+    if (pResult.rows.length === 0) return res.status(404).json({ error: 'Player not found' });
+    const user = (req as any).user;
+    if (user.role === 'CLUB_ADMIN' && pResult.rows[0].club_id !== user.clubId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const currentlyHidden = pResult.rows[0].hidden === 1;
+    await db.execute({
+      sql: 'UPDATE players SET hidden = ? WHERE id = ?',
+      args: [currentlyHidden ? 0 : 1, id]
+    });
+    res.json({ hidden: !currentlyHidden });
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
   }

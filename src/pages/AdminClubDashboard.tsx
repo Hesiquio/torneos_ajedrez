@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchApi } from '../api';
-import { Shield, ChevronLeft, Trash2, Edit2, Plus, Save, Users, Trophy, Settings } from 'lucide-react';
+import { Shield, ChevronLeft, Trash2, Edit2, Plus, Save, Users, Trophy, Settings, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminClubDashboard() {
   const { clubId } = useParams();
@@ -35,7 +35,7 @@ export default function AdminClubDashboard() {
       if (!c) return navigate('/admin/super');
       setClub(c);
 
-      const pRes = await fetchApi(`/players?club_id=${clubId}`);
+      const pRes = await fetchApi(`/players?club_id=${clubId}&include_hidden=true`);
       setPlayers(pRes);
       
       const tRes = await fetchApi(`/tournaments?club_id=${clubId}`);
@@ -66,6 +66,13 @@ export default function AdminClubDashboard() {
         body: JSON.stringify({ name: editPlayerName, grandPrixPoints: editPlayerGP, clubId })
       });
       setEditingPlayerId(null);
+      loadData();
+    } catch (e: any) { alert(e.message); }
+  }
+
+  async function handleToggleVisibility(id: string) {
+    try {
+      await fetchApi(`/players/${id}/visibility`, { method: 'PATCH' });
       loadData();
     } catch (e: any) { alert(e.message); }
   }
@@ -158,18 +165,19 @@ export default function AdminClubDashboard() {
               </form>
             </div>
 
-            <div className="card-panel" style={{ flex: 2, minWidth: '320px' }}>
+              <div className="card-panel" style={{ flex: 2, minWidth: '320px' }}>
               <h2 className="card-title">Lista de Jugadores</h2>
               <div className="table-wrapper">
                 <table className="standings-table">
-                  <thead><tr><th>Jugador</th><th>Pts GP</th><th>Acciones</th></tr></thead>
+                  <thead><tr><th>Jugador</th><th>Pts GP</th><th style={{ textAlign: 'center' }}>Visible</th><th>Acciones</th></tr></thead>
                   <tbody>
                     {players.map(p => (
-                      <tr key={p.id}>
+                      <tr key={p.id} style={{ opacity: p.hidden ? 0.5 : 1 }}>
                         {editingPlayerId === p.id ? (
                           <>
                             <td><input type="text" className="input-text" style={{ padding: '0.5rem' }} value={editPlayerName} onChange={e => setEditPlayerName(e.target.value)} /></td>
                             <td><input type="number" className="input-text" style={{ padding: '0.5rem', width: '80px' }} value={editPlayerGP} onChange={e => setEditPlayerGP(parseInt(e.target.value))} /></td>
+                            <td></td>
                             <td style={{ display: 'flex', gap: '0.5rem' }}>
                               <button className="btn btn-primary" style={{ padding: '0.5rem' }} onClick={() => handleEditPlayer(p.id)}><Save size={16}/></button>
                               <button className="btn btn-secondary" style={{ padding: '0.5rem' }} onClick={() => setEditingPlayerId(null)}>Cancelar</button>
@@ -177,8 +185,21 @@ export default function AdminClubDashboard() {
                           </>
                         ) : (
                           <>
-                            <td style={{ fontWeight: '500' }}>{p.name}</td>
+                            <td style={{ fontWeight: '500' }}>
+                              {p.name}
+                              {p.hidden === 1 && <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>oculto</span>}
+                            </td>
                             <td style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>{p.grand_prix_points}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                className="btn btn-secondary"
+                                style={{ padding: '0.4rem', opacity: p.hidden ? 0.6 : 1 }}
+                                title={p.hidden ? 'Mostrar en ranking público' : 'Ocultar del ranking público'}
+                                onClick={() => handleToggleVisibility(p.id)}
+                              >
+                                {p.hidden ? <EyeOff size={16} color="var(--color-text-muted)" /> : <Eye size={16} color="var(--color-success)" />}
+                              </button>
+                            </td>
                             <td style={{ display: 'flex', gap: '0.5rem' }}>
                               <button className="btn btn-secondary" style={{ padding: '0.5rem' }} onClick={() => { setEditingPlayerId(p.id); setEditPlayerName(p.name); setEditPlayerGP(p.grand_prix_points); }}><Edit2 size={16} /></button>
                               <button className="btn btn-danger" style={{ padding: '0.5rem' }} onClick={() => handleDeletePlayer(p.id)}><Trash2 size={16} /></button>
