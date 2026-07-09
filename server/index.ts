@@ -231,9 +231,9 @@ app.get('/api/clubs/:idOrSlug/history', async (req, res) => {
     });
     const actualClubId = clubRes.rows.length > 0 ? String(clubRes.rows[0].id) : idOrSlug;
 
-    // Get list of tournaments for this club
+    // Get list of tournaments for this club (completed or archived)
     const tRes = await db.execute({
-      sql: "SELECT id, name, created_at FROM tournaments WHERE club_id = ? AND status = 'completed' ORDER BY created_at DESC",
+      sql: "SELECT id, name, created_at FROM tournaments WHERE club_id = ? AND status IN ('completed', 'archived') ORDER BY created_at DESC",
       args: [actualClubId]
     });
     
