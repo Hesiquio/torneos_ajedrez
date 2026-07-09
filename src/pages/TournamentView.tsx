@@ -152,18 +152,18 @@ export default function TournamentView() {
             </div>
           )}
 
-          <div className="card-panel">
-            <h2 className="card-title" style={{ fontSize: '1.35rem' }}>Tabla de Posiciones</h2>
+          <div className="card-panel" style={{ alignSelf: 'flex-start' }}>
+            <h2 className="card-title" style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>Tabla de Posiciones</h2>
             <div className="table-wrapper">
-              <table className="standings-table">
+              <table className="standings-table table-compact">
                 <thead>
                   <tr>
-                    <th>Pos</th>
+                    <th style={{ width: '50px', textAlign: 'center' }}>Pos</th>
                     <th>Jugador</th>
                     <th>Pts</th>
                     <th>BUCH</th>
                     {t.status === 'completed' && t.is_grand_prix === 1 && (
-                      <th style={{ color: 'var(--color-primary)', textAlign: 'center' }}>🏆 GP</th>
+                      <th style={{ color: 'var(--color-primary)', textAlign: 'center', width: '70px' }}>🏆 GP</th>
                     )}
                   </tr>
                 </thead>
@@ -179,12 +179,12 @@ export default function TournamentView() {
 
                     return (
                       <tr key={s.id}>
-                        <td style={{ fontWeight: 'bold' }}>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle' }}>
                           {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
                         </td>
-                        <td style={{ textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                            <span style={{ fontWeight: '500' }}>{s.name}</span>
+                        <td style={{ textTransform: 'uppercase', letterSpacing: '0.3px', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: '500', fontSize: '0.9rem' }}>{s.name}</span>
                             <span style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -196,22 +196,22 @@ export default function TournamentView() {
                               background: rankInfo.bg,
                               padding: '0.05rem 0.35rem',
                               borderRadius: '4px',
-                              width: 'fit-content'
+                              whiteSpace: 'nowrap'
                             }}>
                               {rankInfo.icon} {rankInfo.name}
                             </span>
                           </div>
                         </td>
-                        <td style={{ color: 'var(--color-primary)', fontWeight: 'bold', verticalAlign: 'middle' }}>{s.points}</td>
-                        <td style={{ color: 'var(--color-text-secondary)', verticalAlign: 'middle' }}>{s.sb}</td>
+                        <td style={{ color: 'var(--color-primary)', fontWeight: 'bold', verticalAlign: 'middle', fontSize: '0.95rem' }}>{s.points}</td>
+                        <td style={{ color: 'var(--color-text-secondary)', verticalAlign: 'middle', fontSize: '0.85rem' }}>{s.sb}</td>
                         {t.status === 'completed' && t.is_grand_prix === 1 && (
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
                             <span style={{
                               display: 'inline-block',
-                              padding: '0.2rem 0.6rem',
-                              borderRadius: '8px',
+                              padding: '0.15rem 0.5rem',
+                              borderRadius: '6px',
                               fontWeight: '700',
-                              fontSize: '0.85rem',
+                              fontSize: '0.8rem',
                               background: idx < 3
                                 ? 'rgba(226,184,92,0.18)'
                                 : 'rgba(255,255,255,0.06)',

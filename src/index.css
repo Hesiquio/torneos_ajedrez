@@ -339,6 +339,17 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
+/* Compact Table Variant */
+.standings-table.table-compact th {
+  padding: 0.6rem 0.8rem;
+  font-size: 0.75rem;
+}
+
+.standings-table.table-compact td {
+  padding: 0.55rem 0.8rem;
+  font-size: 0.9rem;
+}
+
 .standings-table tr:hover td {
   background: rgba(255, 255, 255, 0.02);
 }

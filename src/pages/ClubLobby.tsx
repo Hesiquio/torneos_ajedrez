@@ -67,16 +67,16 @@ export default function ClubLobby() {
 
         {/* Lado Derecho: Ranking Global GP */}
         <div className="card-panel" style={{ alignSelf: 'flex-start' }}>
-          <h2 className="card-title">
+          <h2 className="card-title" style={{ marginBottom: '1rem' }}>
             <Crown size={24} color="var(--color-primary)" /> Tabla General (GP)
           </h2>
           <div className="table-wrapper">
-            <table className="standings-table">
+            <table className="standings-table table-compact">
               <thead>
                 <tr>
-                  <th style={{ width: '60px', textAlign: 'center' }}>Pos</th>
+                  <th style={{ width: '50px', textAlign: 'center' }}>Pos</th>
                   <th>Jugador</th>
-                  <th style={{ textAlign: 'right' }}>Puntos GP</th>
+                  <th style={{ textAlign: 'right', width: '90px' }}>Puntos GP</th>
                 </tr>
               </thead>
               <tbody>
@@ -93,34 +93,34 @@ export default function ClubLobby() {
 
                     return (
                       <tr key={p.id}>
-                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
-                          {currentRank === 1 ? <span className="rank-medal" title="Oro">🥇</span> :
-                           currentRank === 2 ? <span className="rank-medal" title="Plata">🥈</span> :
-                           currentRank === 3 ? <span className="rank-medal" title="Bronce">🥉</span> :
-                           <span style={{ color: 'var(--color-text-muted)' }}>{currentRank}</span>}
+                        <td style={{ textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle' }}>
+                          {currentRank === 1 ? <span className="rank-medal" style={{ fontSize: '1.1rem' }} title="Oro">🥇</span> :
+                           currentRank === 2 ? <span className="rank-medal" style={{ fontSize: '1.1rem' }} title="Plata">🥈</span> :
+                           currentRank === 3 ? <span className="rank-medal" style={{ fontSize: '1.1rem' }} title="Bronce">🥉</span> :
+                           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>{currentRank}</span>}
                         </td>
-                        <td style={{ fontWeight: isTop3 ? '600' : '400', color: isTop3 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <span>{p.name}</span>
+                        <td style={{ fontWeight: isTop3 ? '600' : '400', color: isTop3 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.9rem' }}>{p.name}</span>
                             <span style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '0.25rem',
-                              fontSize: '0.7rem',
+                              gap: '0.2rem',
+                              fontSize: '0.65rem',
                               fontWeight: '700',
                               letterSpacing: '0.5px',
                               color: rankInfo.color,
                               background: rankInfo.bg,
-                              padding: '0.1rem 0.4rem',
+                              padding: '0.05rem 0.35rem',
                               borderRadius: '4px',
-                              width: 'fit-content',
-                              textTransform: 'uppercase'
+                              textTransform: 'uppercase',
+                              whiteSpace: 'nowrap'
                             }}>
                               {rankInfo.icon} {rankInfo.name}
                             </span>
                           </div>
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--color-primary)', verticalAlign: 'middle' }}>
+                        <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--color-primary)', verticalAlign: 'middle', fontSize: '0.95rem' }}>
                           {p.grand_prix_points} pts
                         </td>
                       </tr>
