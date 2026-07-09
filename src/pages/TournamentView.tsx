@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchApi } from '../api';
-import { Lock, Unlock, ChevronLeft, RefreshCw, Check, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Lock, Unlock, ChevronLeft, RefreshCw, Check, AlertTriangle, ShieldCheck, Trophy } from 'lucide-react';
 
 export default function TournamentView() {
   const { id } = useParams();
@@ -28,7 +28,9 @@ export default function TournamentView() {
       const res = await fetchApi(`/tournaments/${id}`);
       setData(res);
       if (res.tournament.status === 'created') {
-        const pRes = await fetchApi(`/players?club_id=${res.tournament.club_id || 'null'}`);
+        // Load players from the club (or global players if no club)
+        const clubParam = res.tournament.club_id ? res.tournament.club_id : 'null';
+        const pRes = await fetchApi(`/players?club_id=${clubParam}`);
         setAllPlayers(pRes);
         const set = new Set<string>();
         res.players.forEach((p:any) => set.add(p.id));
