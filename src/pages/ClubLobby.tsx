@@ -28,7 +28,12 @@ export default function ClubLobby() {
             <Trophy className="brand-icon" size={36} />
             <div>
               <h1 className="brand-title">{club?.name || 'Lobby del Club'}</h1>
-              <p className="brand-subtitle">Torneos Oficiales Grand Prix</p>
+              <p className="brand-subtitle" style={{ margin: 0 }}>Torneos Oficiales Grand Prix</p>
+              {club?.description && (
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--color-text-muted)', maxWidth: '500px', lineHeight: '1.4' }}>
+                  {club.description}
+                </p>
+              )}
             </div>
           </div>
           <Link to={`/admin/club/${club?.id || clubId}`} className="btn btn-secondary" style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', opacity: 0.5 }} title="Panel de Administrador">

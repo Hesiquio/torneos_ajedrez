@@ -155,7 +155,7 @@ app.post('/api/clubs', verifyGlobalAdmin, async (req, res) => {
 
 app.put('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, description } = req.body;
     
     // Also regenerate slug on update to match new name
     let baseSlug = slugify(name);
@@ -176,10 +176,10 @@ app.put('/api/clubs/:id', verifyGlobalAdmin, async (req, res) => {
     }
 
     await db.execute({
-      sql: 'UPDATE clubs SET name = ?, slug = ? WHERE id = ?',
-      args: [name, slug, req.params.id]
+      sql: 'UPDATE clubs SET name = ?, slug = ?, description = ? WHERE id = ?',
+      args: [name, slug, description || null, req.params.id]
     });
-    res.json({ success: true });
+    res.json({ success: true, slug });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

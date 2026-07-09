@@ -25,6 +25,10 @@ export default function AdminClubDashboard() {
   const [newTournamentRounds, setNewTournamentRounds] = useState(3);
   const [newTournamentAdminKey, setNewTournamentAdminKey] = useState('');
 
+  // Club Config Form
+  const [clubName, setClubName] = useState('');
+  const [clubDesc, setClubDesc] = useState('');
+
   useEffect(() => {
     loadData();
   }, [clubId]);
@@ -36,6 +40,8 @@ export default function AdminClubDashboard() {
       const c = clubsRes.find((x:any) => x.id === clubId);
       if (!c) return navigate('/admin/super');
       setClub(c);
+      setClubName(c.name);
+      setClubDesc(c.description || '');
 
       const pRes = await fetchApi(`/players?club_id=${clubId}&include_hidden=true`);
       setPlayers(pRes);
@@ -86,6 +92,26 @@ export default function AdminClubDashboard() {
       await fetchApi(`/players/${id}`, { method: 'DELETE' });
       loadData();
     } catch (e: any) { alert(e.message); }
+  }
+
+  async function handleUpdateClub(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const res = await fetchApi(`/clubs/${clubId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: clubName, description: clubDesc })
+      });
+      alert('¡Información del club actualizada con éxito!');
+      
+      // If the slug changed, navigate to new admin URL to avoid errors
+      if (res.slug && res.slug !== clubId) {
+        navigate(`/admin/club/${res.slug}`);
+      } else {
+        loadData();
+      }
+    } catch (e: any) {
+      alert(e.message);
+    }
   }
 
   // --- Tournaments ---
@@ -283,12 +309,35 @@ export default function AdminClubDashboard() {
         )}
 
         {activeTab === 'config' && (
-          <div className="card-panel" style={{ maxWidth: '500px' }}>
-            <h2 className="card-title" style={{ color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>Zona de Peligro</h2>
-            <p style={{ marginBottom: '1.5rem', color: 'var(--color-text-secondary)' }}>
-              Eliminar este club borrará permanentemente a todos sus jugadores, torneos y emparejamientos. Esta acción no se puede deshacer.
-            </p>
-            <button className="btn btn-danger" onClick={handleDeleteClub}><Trash2 size={18} /> Eliminar Club Permanentemente</button>
+          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+            <div className="card-panel" style={{ flex: 1, minWidth: '320px', alignSelf: 'flex-start' }}>
+              <h2 className="card-title">Información del Club</h2>
+              <form onSubmit={handleUpdateClub}>
+                <div className="form-group">
+                  <label className="form-label">Nombre del Club</label>
+                  <input type="text" className="input-text" required value={clubName} onChange={e => setClubName(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Descripción / Información General</label>
+                  <textarea 
+                    className="input-text" 
+                    style={{ minHeight: '120px', fontFamily: 'inherit', resize: 'vertical' }}
+                    placeholder="Escribe aquí los horarios del club, dirección física, contacto o información general..."
+                    value={clubDesc} 
+                    onChange={e => setClubDesc(e.target.value)} 
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}><Save size={18} /> Guardar Cambios</button>
+              </form>
+            </div>
+
+            <div className="card-panel" style={{ flex: 1, minWidth: '320px', alignSelf: 'flex-start' }}>
+              <h2 className="card-title" style={{ color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>Zona de Peligro</h2>
+              <p style={{ marginBottom: '1.5rem', color: 'var(--color-text-secondary)', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                Eliminar este club borrará permanentemente a todos sus jugadores, torneos y emparejamientos. Esta acción no se puede deshacer.
+              </p>
+              <button className="btn btn-danger" onClick={handleDeleteClub}><Trash2 size={18} /> Eliminar Club Permanentemente</button>
+            </div>
           </div>
         )}
       </main>
