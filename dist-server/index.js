@@ -350,28 +350,45 @@ app.get('/api/tournaments/:id', async (req, res) => {
         });
         const matches = mResult.rows;
         const participants = players.map((p, index) => ({ id: p.id, seed: index + 1 }));
-        const matchHistory = matches.map((m) => ({
+        const matchHistory = matches
+            .filter((m) => m.result !== null)
+            .map((m) => ({
             round: m.round_number,
             home: { id: m.white_player_id, points: m.result === '1-0' ? 1 : m.result === '0.5-0.5' ? 0.5 : 0 },
             away: { id: m.black_player_id, points: m.result === '0-1' ? 1 : m.result === '0.5-0.5' ? 0.5 : 0 }
         }));
-        let standings = [];
-        if (players.length > 0 && matchHistory.length > 0) {
-            const swissStandings = (0, swiss_1.calculateSwissStandings)(rounds.length, participants, matchHistory);
-            standings = swissStandings.map((s) => {
-                const p = players.find((pl) => pl.id === s.id);
-                return {
-                    id: s.id,
-                    name: p ? p.name : 'Unknown',
-                    points: s.wins,
-                    sb: s.tiebreaker,
-                    played: matches.filter((m) => (m.white_player_id === s.id || m.black_player_id === s.id) && m.result).length
-                };
-            });
+        // --- Calculate standings directly (accurate regardless of library quirks) ---
+        const pointsMap = new Map();
+        const opponentsMap = new Map(); // player -> list of opponent ids
+        for (const p of players) {
+            pointsMap.set(p.id, 0);
+            opponentsMap.set(p.id, []);
         }
-        else {
-            standings = players.map((p) => ({ id: p.id, name: p.name, points: 0, sb: 0, played: 0 }));
+        for (const m of matches) {
+            if (!m.result || m.is_bye === 1)
+                continue;
+            const wid = m.white_player_id;
+            const bid = m.black_player_id;
+            if (m.result === '1-0') {
+                pointsMap.set(wid, (pointsMap.get(wid) || 0) + 1);
+            }
+            else if (m.result === '0-1') {
+                pointsMap.set(bid, (pointsMap.get(bid) || 0) + 1);
+            }
+            else if (m.result === '0.5-0.5') {
+                pointsMap.set(wid, (pointsMap.get(wid) || 0) + 0.5);
+                pointsMap.set(bid, (pointsMap.get(bid) || 0) + 0.5);
+            }
+            opponentsMap.get(wid)?.push(bid);
+            opponentsMap.get(bid)?.push(wid);
         }
+        // Buchholz tiebreaker: sum of opponents' points
+        const standings = players.map((p) => {
+            const pid = p.id;
+            const pts = pointsMap.get(pid) || 0;
+            const buchholz = (opponentsMap.get(pid) || []).reduce((sum, oppId) => sum + (pointsMap.get(oppId) || 0), 0);
+            return { id: pid, name: p.name, points: pts, sb: Math.round(buchholz * 10) / 10, played: (opponentsMap.get(pid) || []).length };
+        }).sort((a, b) => b.points - a.points || b.sb - a.sb);
         res.json({ tournament, players, rounds, matches, standings });
     }
     catch (error) {
