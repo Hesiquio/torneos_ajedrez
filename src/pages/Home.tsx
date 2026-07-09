@@ -131,7 +131,7 @@ export default function Home() {
                 Si eres organizador de torneos o tienes un club físico, te proporcionamos credenciales para que gestiones tus propios rankings, GP y jugadores.
               </p>
             </div>
-            <a href="mailto:admin@ahkintech.com?subject=Interes en Plataforma Ajedrez - Nuevo Club" className="btn btn-primary" style={{ width: '100%', padding: '0.9rem' }}>
+            <a href="https://wa.me/529821004158?text=Hola,%20estoy%20interesado%20en%20crear%20un%20nuevo%20club%20en%20la%20plataforma%20de%20ajedrez" target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ width: '100%', padding: '0.9rem' }}>
               <Mail size={18} /> Contactar Soporte
             </a>
           </div>
