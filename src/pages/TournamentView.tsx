@@ -155,16 +155,51 @@ export default function TournamentView() {
             <h2 className="card-title" style={{ fontSize: '1.35rem' }}>Tabla de Posiciones</h2>
             <div className="table-wrapper">
               <table className="standings-table">
-                <thead><tr><th>Pos</th><th>Jugador</th><th>Pts</th><th>BUCH</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Pos</th>
+                    <th>Jugador</th>
+                    <th>Pts</th>
+                    <th>BUCH</th>
+                    {t.status === 'completed' && t.is_grand_prix === 1 && (
+                      <th style={{ color: 'var(--color-primary)', textAlign: 'center' }}>🏆 GP</th>
+                    )}
+                  </tr>
+                </thead>
                 <tbody>
-                  {data.standings.map((s:any, idx:number) => (
-                    <tr key={s.id}>
-                      <td style={{ fontWeight: 'bold' }}>{idx + 1}</td>
-                      <td>{s.name}</td>
-                      <td style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>{s.points}</td>
-                      <td style={{ color: 'var(--color-text-secondary)' }}>{s.sb}</td>
-                    </tr>
-                  ))}
+                  {data.standings.map((s:any, idx:number) => {
+                    const GP_MAP = [10, 8, 6, 4, 2];
+                    const gpEarned = idx < GP_MAP.length ? GP_MAP[idx] : 2;
+                    return (
+                      <tr key={s.id}>
+                        <td style={{ fontWeight: 'bold' }}>
+                          {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                        </td>
+                        <td>{s.name}</td>
+                        <td style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>{s.points}</td>
+                        <td style={{ color: 'var(--color-text-secondary)' }}>{s.sb}</td>
+                        {t.status === 'completed' && t.is_grand_prix === 1 && (
+                          <td style={{ textAlign: 'center' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: '8px',
+                              fontWeight: '700',
+                              fontSize: '0.85rem',
+                              background: idx < 3
+                                ? 'rgba(226,184,92,0.18)'
+                                : 'rgba(255,255,255,0.06)',
+                              color: idx < 3
+                                ? 'var(--color-primary)'
+                                : 'var(--color-text-secondary)',
+                            }}>
+                              +{gpEarned}
+                            </span>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
