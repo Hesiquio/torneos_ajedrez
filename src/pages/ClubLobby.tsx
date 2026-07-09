@@ -101,7 +101,9 @@ export default function ClubLobby() {
                         </td>
                         <td style={{ fontWeight: isTop3 ? '600' : '400', color: isTop3 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.3px', verticalAlign: 'middle' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.9rem' }}>{p.name}</span>
+                            <Link to={`/club/${clubId}/player/${p.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }} className="player-profile-link">
+                              <span style={{ fontSize: '0.9rem' }}>{p.name}</span>
+                            </Link>
                             <span style={{
                               display: 'inline-flex',
                               alignItems: 'center',

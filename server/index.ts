@@ -285,6 +285,45 @@ app.get('/api/players', async (req, res) => {
   }
 });
 
+// GET single player detail
+app.get('/api/players/:id/profile', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM players WHERE id = ?',
+      args: [id]
+    });
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Player not found' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// GET single player matches history
+app.get('/api/players/:id/history', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.execute({
+      sql: `SELECT m.id, m.result, m.is_bye, m.white_player_id, m.black_player_id,
+            t.name as tournament_name, t.created_at as tournament_date,
+            r.round_number,
+            w.name as white_player_name, b.name as black_player_name
+            FROM matches m
+            JOIN tournaments t ON m.tournament_id = t.id
+            JOIN rounds r ON m.round_id = r.id
+            JOIN players w ON m.white_player_id = w.id
+            LEFT JOIN players b ON m.black_player_id = b.id
+            WHERE (m.white_player_id = ? OR m.black_player_id = ?) AND m.result IS NOT NULL
+            ORDER BY t.created_at DESC, r.round_number DESC, m.id DESC`,
+      args: [id, id]
+    });
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 app.post('/api/players', async (req, res) => {
   const { name, age, clubId } = req.body;
   if (!name || name.trim() === '') return res.status(400).json({ error: 'Player name is required' });
