@@ -398,11 +398,12 @@ app.post('/api/players', async (req, res) => {
         }
         catch (e) { }
     }
-    if (clubId && clubId !== 'null') {
+    const targetClubId = (clubId && clubId !== 'null') ? clubId : null;
+    if (targetClubId) {
         if (!user) {
             return res.status(401).json({ error: 'No autorizado' });
         }
-        if (user.role === 'CLUB_ADMIN' && user.clubId !== clubId) {
+        if (user.role === 'CLUB_ADMIN' && user.clubId !== targetClubId) {
             return res.status(403).json({ error: 'Forbidden' });
         }
         if (user.role !== 'SUPER_ADMIN' && user.role !== 'CLUB_ADMIN') {
@@ -414,12 +415,13 @@ app.post('/api/players', async (req, res) => {
         const formattedName = name.trim().toUpperCase();
         await db_1.db.execute({
             sql: 'INSERT INTO players (id, club_id, name, age) VALUES (?, ?, ?, ?)',
-            args: [id, clubId || null, formattedName, age ? parseInt(age) : null]
+            args: [id, targetClubId, formattedName, age ? parseInt(age) : null]
         });
-        res.json({ id, club_id: clubId || null, name: formattedName, age, grand_prix_points: 0 });
+        res.json({ id, club_id: targetClubId, name: formattedName, age, grand_prix_points: 0 });
     }
     catch (error) {
-        res.status(500).json({ error: 'Database error' });
+        console.error('Error inserting player:', error);
+        res.status(500).json({ error: 'Database error: ' + error.message });
     }
 });
 app.put('/api/players/:id', verifyGlobalAdmin, async (req, res) => {
@@ -541,11 +543,12 @@ app.post('/api/tournaments', async (req, res) => {
         }
         catch (e) { }
     }
-    if (clubId && clubId !== 'null') {
+    const targetClubId = (clubId && clubId !== 'null') ? clubId : null;
+    if (targetClubId) {
         if (!user) {
             return res.status(401).json({ error: 'No autorizado' });
         }
-        if (user.role === 'CLUB_ADMIN' && user.clubId !== clubId) {
+        if (user.role === 'CLUB_ADMIN' && user.clubId !== targetClubId) {
             return res.status(403).json({ error: 'Forbidden' });
         }
         if (user.role !== 'SUPER_ADMIN' && user.role !== 'CLUB_ADMIN') {
@@ -576,12 +579,13 @@ app.post('/api/tournaments', async (req, res) => {
         }
         await db_1.db.execute({
             sql: 'INSERT INTO tournaments (id, club_id, name, slug, status, total_rounds, is_grand_prix, admin_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            args: [id, clubId || null, name, slug, 'created', rounds, grandPrix, adminKey.trim()]
+            args: [id, targetClubId, name, slug, 'created', rounds, grandPrix, adminKey.trim()]
         });
-        res.json({ id, name, slug, status: 'created', total_rounds: rounds, is_grand_prix: grandPrix, club_id: clubId || null });
+        res.json({ id, name, slug, status: 'created', total_rounds: rounds, is_grand_prix: grandPrix, club_id: targetClubId });
     }
     catch (error) {
-        res.status(500).json({ error: 'Database error' });
+        console.error('Error inserting tournament:', error);
+        res.status(500).json({ error: 'Database error: ' + error.message });
     }
 });
 // PUT update tournament name and adminKey

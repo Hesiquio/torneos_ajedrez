@@ -315,8 +315,8 @@ export default function TournamentView() {
                       className="input-text" 
                       required 
                       value={newPlayerName} 
-                      onChange={e => setNewPlayerName(e.target.value)} 
-                      style={{ padding: '0.5rem 0.8rem', width: '100%', fontSize: '0.9rem' }}
+                      onChange={e => setNewPlayerName(e.target.value.toUpperCase())} 
+                      style={{ padding: '0.5rem 0.8rem', width: '100%', fontSize: '0.9rem', textTransform: 'uppercase' }}
                     />
                   </div>
                   <div style={{ width: '80px' }}>

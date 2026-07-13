@@ -217,7 +217,7 @@ export default function AdminClubDashboard() {
               <form onSubmit={handleAddPlayer}>
                 <div className="form-group">
                   <label className="form-label">Nombre Completo</label>
-                  <input type="text" className="input-text" value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} required />
+                   <input type="text" className="input-text" value={newPlayerName} onChange={e => setNewPlayerName(e.target.value.toUpperCase())} style={{ textTransform: 'uppercase' }} required />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Edad (Opcional)</label>
