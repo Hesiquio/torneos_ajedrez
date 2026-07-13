@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchApi } from '../api';
-import { Lock, Unlock, ChevronLeft, RefreshCw, Check, AlertTriangle, ShieldCheck, Trophy } from 'lucide-react';
+import { Lock, Unlock, ChevronLeft, RefreshCw, Check, AlertTriangle, ShieldCheck, Trophy, Plus } from 'lucide-react';
 import { getPlayerRank } from '../utils/ranks';
 
 export default function TournamentView() {
@@ -12,6 +12,11 @@ export default function TournamentView() {
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [viewingRound, setViewingRound] = useState<number | null>(null);
+
+  // New Player Form States
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerAge, setNewPlayerAge] = useState('');
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false);
 
   useEffect(() => {
     loadTournament();
@@ -40,6 +45,39 @@ export default function TournamentView() {
       }
     } catch (e) {
       console.error(e);
+    }
+  }
+
+  async function handleCreatePlayer(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPlayerName.trim()) return;
+    if (isCreatingPlayer) return;
+    setIsCreatingPlayer(true);
+    try {
+      const p = await fetchApi('/players', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: newPlayerName,
+          age: newPlayerAge || null,
+          clubId: data?.tournament?.club_id || null
+        })
+      });
+      // Refresh players list
+      const clubParam = data?.tournament?.club_id ? data.tournament.club_id : 'null';
+      const pRes = await fetchApi(`/players?club_id=${clubParam}`);
+      setAllPlayers(pRes);
+      
+      // Auto check-in
+      const newSet = new Set(selectedPlayerIds);
+      newSet.add(p.id);
+      setSelectedPlayerIds(newSet);
+      
+      setNewPlayerName('');
+      setNewPlayerAge('');
+    } catch(err: any) {
+      alert(err.message);
+    } finally {
+      setIsCreatingPlayer(false);
     }
   }
 
@@ -237,6 +275,36 @@ export default function TournamentView() {
           {t.status === 'created' ? (
             <div className="card-panel">
               <h2 className="card-title">Inscripción (Check-in)</h2>
+              
+              {isAdminUnlocked && (
+                <form onSubmit={handleCreatePlayer} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap', background: 'rgba(255,255,255,0.01)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+                  <div style={{ flex: 1, minWidth: '180px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Registrar nuevo jugador..." 
+                      className="input-text" 
+                      required 
+                      value={newPlayerName} 
+                      onChange={e => setNewPlayerName(e.target.value)} 
+                      style={{ padding: '0.5rem 0.8rem', width: '100%', fontSize: '0.9rem' }}
+                    />
+                  </div>
+                  <div style={{ width: '80px' }}>
+                    <input 
+                      type="number" 
+                      placeholder="Edad" 
+                      className="input-text" 
+                      value={newPlayerAge} 
+                      onChange={e => setNewPlayerAge(e.target.value)} 
+                      style={{ padding: '0.5rem 0.8rem', width: '100%', fontSize: '0.9rem' }}
+                    />
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} disabled={isCreatingPlayer}>
+                    <Plus size={16} /> {isCreatingPlayer ? 'Registrando...' : 'Agregar'}
+                  </button>
+                </form>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
                 {allPlayers.map(p => (
                   <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-light)', cursor: isAdminUnlocked ? 'pointer' : 'default' }}>
