@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchApi, logout } from '../api';
 import { useNavigate, Link } from 'react-router-dom';
-import { LogOut, Plus, Shield, Users, Globe } from 'lucide-react';
+import { LogOut, Plus, Shield, Users, Globe, Trash2 } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
   const [clubs, setClubs] = useState<any[]>([]);
@@ -84,6 +84,16 @@ export default function SuperAdminDashboard() {
     }
   }
 
+  async function handleDeleteTournament(id: string) {
+    if (!confirm('¿Eliminar torneo libre permanentemente? Esta acción no se puede deshacer y borrará todas sus partidas.')) return;
+    try {
+      await fetchApi(`/tournaments/${id}`, { method: 'DELETE' });
+      loadData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
   return (
     <div className="layout-container">
       <header className="main-header">
@@ -133,8 +143,15 @@ export default function SuperAdminDashboard() {
                 {publicTournaments.map(t => (
                   <tr key={t.id}>
                     <td style={{ fontWeight: '500' }}>{t.name}</td>
-                    <td><span className={`status-badge status-${t.status}`}>{t.status}</span></td>
-                    <td><Link to={`/tournament/${t.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>Administrar</Link></td>
+                     <td><span className={`status-badge status-${t.status}`}>{t.status === 'created' ? 'Borrador' : t.status === 'in_progress' ? 'En Curso' : 'Finalizado'}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Link to={`/tournament/${t.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>Administrar</Link>
+                        <button className="btn btn-danger" style={{ padding: '0.4rem 0.6rem' }} onClick={() => handleDeleteTournament(t.id)} title="Eliminar Torneo">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
