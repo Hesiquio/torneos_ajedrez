@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchApi, logout } from '../api';
 import { useNavigate, Link } from 'react-router-dom';
-import { LogOut, Plus, Shield, Users, Globe, Trash2 } from 'lucide-react';
+import { LogOut, Plus, Shield, Users, Globe, Trash2, Eye, EyeOff, Share2 } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
   const [clubs, setClubs] = useState<any[]>([]);
@@ -12,6 +12,8 @@ export default function SuperAdminDashboard() {
   const [expectedPlayers, setExpectedPlayers] = useState(8);
   const [newTournamentRounds, setNewTournamentRounds] = useState(3);
   const [newTournamentAdminKey, setNewTournamentAdminKey] = useState('');
+  const [showNewKey, setShowNewKey] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
 
   const [showCreateClubModal, setShowCreateClubModal] = useState(false);
   const [newClubName, setNewClubName] = useState('');
@@ -184,9 +186,67 @@ export default function SuperAdminDashboard() {
                 <input type="number" className="input-text" min="1" max="15" required value={newTournamentRounds} onChange={e => setNewTournamentRounds(parseInt(e.target.value))} />
               </div>
               <div className="form-group">
-                <label className="form-label">Clave de Árbitro (Temporal)</label>
-                <input type="password" className="input-text" required value={newTournamentAdminKey} onChange={e => setNewTournamentAdminKey(e.target.value)} />
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Clave de Árbitro (Temporal)</span>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setNewTournamentAdminKey(Math.random().toString(36).substring(2, 8).toUpperCase());
+                      setShowNewKey(true);
+                    }} 
+                    style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(226,184,92,0.1)', color: 'var(--color-primary)', border: '1px dashed var(--color-primary)', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 'bold' }}
+                  >
+                    Autogenerar Clave
+                  </button>
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input 
+                    type={showNewKey ? "text" : "password"} 
+                    className="input-text" 
+                    required 
+                    value={newTournamentAdminKey} 
+                    onChange={e => setNewTournamentAdminKey(e.target.value)} 
+                    style={{ flex: 1 }}
+                  />
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => setShowNewKey(!showNewKey)} 
+                    style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title={showNewKey ? "Ocultar clave" : "Mostrar clave"}
+                  >
+                    {showNewKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.5rem' }}>Aunque la configures, como Super Admin podrás entrar directamente.</p>
+              </div>
+
+              <div className="form-group" style={{ background: 'rgba(255,255,255,0.01)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Enviar clave por WhatsApp (Opcional)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                  <input 
+                    type="tel" 
+                    placeholder="Ej. 5212223334444" 
+                    className="input-text" 
+                    value={whatsappPhone} 
+                    onChange={e => setWhatsappPhone(e.target.value)} 
+                    style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                  />
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => {
+                      if (!newTournamentAdminKey) return alert('Primero escribe o genera una clave.');
+                      if (!whatsappPhone.trim()) return alert('Escribe un número de teléfono.');
+                      const cleanNum = whatsappPhone.replace(/\D/g, '');
+                      const msg = `Hola, la clave de árbitro para el torneo *${newTournamentName || 'del Club'}* es: *${newTournamentAdminKey}*`;
+                      window.open(`https://wa.me/${cleanNum}?text=${encodeURIComponent(msg)}`, '_blank');
+                    }}
+                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: '#25D366', borderColor: '#25D366', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                  >
+                    <Share2 size={14} /> Compartir
+                  </button>
+                </div>
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowCreateTournamentModal(false)}>Cancelar</button>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchApi } from '../api';
-import { Shield, ChevronLeft, Trash2, Edit2, Plus, Save, Users, Trophy, Settings, Eye, EyeOff } from 'lucide-react';
+import { Shield, ChevronLeft, Trash2, Edit2, Plus, Save, Users, Trophy, Settings, Eye, EyeOff, Share2 } from 'lucide-react';
 
 export default function AdminClubDashboard() {
   const { clubId } = useParams();
@@ -25,6 +25,9 @@ export default function AdminClubDashboard() {
   const [newTournamentRounds, setNewTournamentRounds] = useState(3);
   const [newTournamentAdminKey, setNewTournamentAdminKey] = useState('');
   const [isCreatingTournament, setIsCreatingTournament] = useState(false);
+  const [showNewKey, setShowNewKey] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
 
   // Club Config Form
   const [clubName, setClubName] = useState('');
@@ -304,10 +307,69 @@ export default function AdminClubDashboard() {
                   <input type="number" className="input-text" min="1" max="15" required value={newTournamentRounds} onChange={e => setNewTournamentRounds(parseInt(e.target.value))} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Clave de Árbitro</label>
-                  <input type="password" className="input-text" required value={newTournamentAdminKey} onChange={e => setNewTournamentAdminKey(e.target.value)} />
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Clave de Árbitro</span>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setNewTournamentAdminKey(Math.random().toString(36).substring(2, 8).toUpperCase());
+                        setShowNewKey(true);
+                      }} 
+                      style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', background: 'rgba(226,184,92,0.1)', color: 'var(--color-primary)', border: '1px dashed var(--color-primary)', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 'bold' }}
+                    >
+                      Autogenerar Clave
+                    </button>
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                      type={showNewKey ? "text" : "password"} 
+                      className="input-text" 
+                      required 
+                      value={newTournamentAdminKey} 
+                      onChange={e => setNewTournamentAdminKey(e.target.value)} 
+                      style={{ flex: 1 }}
+                    />
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      onClick={() => setShowNewKey(!showNewKey)} 
+                      style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title={showNewKey ? "Ocultar clave" : "Mostrar clave"}
+                    >
+                      {showNewKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={isCreatingTournament}>
+
+                <div className="form-group" style={{ background: 'rgba(255,255,255,0.01)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                  <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Enviar clave por WhatsApp (Opcional)</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    <input 
+                      type="tel" 
+                      placeholder="Ej. 5212223334444" 
+                      className="input-text" 
+                      value={whatsappPhone} 
+                      onChange={e => setWhatsappPhone(e.target.value)} 
+                      style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                    />
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      onClick={() => {
+                        if (!newTournamentAdminKey) return alert('Primero escribe o genera una clave.');
+                        if (!whatsappPhone.trim()) return alert('Escribe un número de teléfono.');
+                        const cleanNum = whatsappPhone.replace(/\D/g, '');
+                        const msg = `Hola, la clave de árbitro para el torneo *${newTournamentName || 'del Club'}* es: *${newTournamentAdminKey}*`;
+                        window.open(`https://wa.me/${cleanNum}?text=${encodeURIComponent(msg)}`, '_blank');
+                      }}
+                      style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: '#25D366', borderColor: '#25D366', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                    >
+                      <Share2 size={14} /> Compartir
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} disabled={isCreatingTournament}>
                   {isCreatingTournament ? 'Creando...' : <><Plus size={18} /> Crear</>}
                 </button>
               </form>
@@ -335,8 +397,44 @@ export default function AdminClubDashboard() {
                           </>
                         ) : (
                           <>
-                            <td style={{ fontWeight: '500', fontSize: '0.9rem', verticalAlign: 'middle' }}>{t.name}</td>
-                            <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', verticalAlign: 'middle', fontFamily: 'monospace' }}>●●●●●●</td>
+                             <td style={{ fontWeight: '500', fontSize: '0.9rem', verticalAlign: 'middle' }}>{t.name}</td>
+                            <td style={{ verticalAlign: 'middle', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <span style={{ color: revealedKeys.has(t.id) ? 'var(--color-primary)' : 'var(--color-text-secondary)', display: 'inline-block', minWidth: '55px' }}>
+                                  {revealedKeys.has(t.id) ? t.admin_key : '••••••'}
+                                </span>
+                                <button 
+                                  type="button" 
+                                  className="btn btn-secondary" 
+                                  onClick={() => {
+                                    const newSet = new Set(revealedKeys);
+                                    newSet.has(t.id) ? newSet.delete(t.id) : newSet.add(t.id);
+                                    setRevealedKeys(newSet);
+                                  }}
+                                  style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem', flexShrink: 0 }}
+                                >
+                                  {revealedKeys.has(t.id) ? 'Ocultar' : 'Ver'}
+                                </button>
+                                {revealedKeys.has(t.id) && (
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-primary" 
+                                    onClick={() => {
+                                      const num = prompt("Número de WhatsApp del árbitro (ej. 5212223334444):", "");
+                                      if (num && num.trim()) {
+                                        const cleanNum = num.replace(/\D/g, '');
+                                        const msg = `Hola, la clave de árbitro para el torneo *${t.name}* es: *${t.admin_key}*\nAccede aquí: ${window.location.origin}/tournament/${t.slug || t.id}`;
+                                        window.open(`https://wa.me/${cleanNum}?text=${encodeURIComponent(msg)}`, '_blank');
+                                      }
+                                    }}
+                                    style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem', background: '#25D366', borderColor: '#25D366', color: '#fff', flexShrink: 0 }}
+                                    title="Compartir por WhatsApp"
+                                  >
+                                    <Share2 size={10} style={{ display: 'inline', marginRight: '0.1rem' }} /> Enviar
+                                  </button>
+                                )}
+                              </div>
+                            </td>
                             <td style={{ verticalAlign: 'middle' }}><span className={`status-badge status-${t.status}`}>{t.status === 'created' ? 'Borrador' : t.status === 'in_progress' ? 'En Curso' : 'Finalizado'}</span></td>
                             <td>
                               <div style={{ display: 'flex', gap: '0.35rem' }}>
