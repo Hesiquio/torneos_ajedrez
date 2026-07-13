@@ -15,6 +15,8 @@ export default function SuperAdminDashboard() {
 
   const [showCreateClubModal, setShowCreateClubModal] = useState(false);
   const [newClubName, setNewClubName] = useState('');
+  const [isCreatingTournament, setIsCreatingTournament] = useState(false);
+  const [isCreatingClub, setIsCreatingClub] = useState(false);
 
   const navigate = useNavigate();
 
@@ -41,6 +43,8 @@ export default function SuperAdminDashboard() {
 
   async function handleCreateTournament(e: React.FormEvent) {
     e.preventDefault();
+    if (isCreatingTournament) return;
+    setIsCreatingTournament(true);
     try {
       await fetchApi('/tournaments', {
         method: 'POST',
@@ -53,12 +57,19 @@ export default function SuperAdminDashboard() {
         })
       });
       setShowCreateTournamentModal(false);
+      setNewTournamentName('');
+      setNewTournamentAdminKey('');
       loadData();
     } catch(err: any) { alert(err.message); }
+    finally {
+      setIsCreatingTournament(false);
+    }
   }
 
   async function handleCreateClub(e: React.FormEvent) {
     e.preventDefault();
+    if (isCreatingClub) return;
+    setIsCreatingClub(true);
     try {
       await fetchApi('/clubs', {
         method: 'POST',
@@ -68,6 +79,9 @@ export default function SuperAdminDashboard() {
       setNewClubName('');
       loadData();
     } catch(err: any) { alert(err.message); }
+    finally {
+      setIsCreatingClub(false);
+    }
   }
 
   return (
@@ -159,7 +173,9 @@ export default function SuperAdminDashboard() {
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowCreateTournamentModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">Crear Torneo</button>
+                <button type="submit" className="btn btn-primary" disabled={isCreatingTournament}>
+                  {isCreatingTournament ? 'Creando...' : 'Crear Torneo'}
+                </button>
               </div>
             </form>
           </div>
@@ -177,7 +193,9 @@ export default function SuperAdminDashboard() {
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowCreateClubModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">Crear Club</button>
+                <button type="submit" className="btn btn-primary" disabled={isCreatingClub}>
+                  {isCreatingClub ? 'Creando...' : 'Crear Club'}
+                </button>
               </div>
             </form>
           </div>

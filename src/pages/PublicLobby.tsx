@@ -10,6 +10,7 @@ export default function PublicLobby() {
   const [expectedPlayers, setExpectedPlayers] = useState(8);
   const [newTournamentRounds, setNewTournamentRounds] = useState(3);
   const [newTournamentAdminKey, setNewTournamentAdminKey] = useState('');
+  const [isCreatingTournament, setIsCreatingTournament] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -21,6 +22,8 @@ export default function PublicLobby() {
 
   async function handleCreateTournament(e: React.FormEvent) {
     e.preventDefault();
+    if (isCreatingTournament) return;
+    setIsCreatingTournament(true);
     try {
       await fetchApi('/tournaments', {
         method: 'POST',
@@ -38,6 +41,8 @@ export default function PublicLobby() {
       loadData();
     } catch(err: any) {
       alert(err.message);
+    } finally {
+      setIsCreatingTournament(false);
     }
   }
 
@@ -120,7 +125,9 @@ export default function PublicLobby() {
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">Crear Torneo</button>
+                <button type="submit" className="btn btn-primary" disabled={isCreatingTournament}>
+                  {isCreatingTournament ? 'Creando...' : 'Crear Torneo'}
+                </button>
               </div>
             </form>
           </div>

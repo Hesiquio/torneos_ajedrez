@@ -24,6 +24,7 @@ export default function AdminClubDashboard() {
   const [expectedPlayers, setExpectedPlayers] = useState(8);
   const [newTournamentRounds, setNewTournamentRounds] = useState(3);
   const [newTournamentAdminKey, setNewTournamentAdminKey] = useState('');
+  const [isCreatingTournament, setIsCreatingTournament] = useState(false);
 
   // Club Config Form
   const [clubName, setClubName] = useState('');
@@ -122,6 +123,8 @@ export default function AdminClubDashboard() {
   // --- Tournaments ---
   async function handleCreateTournament(e: React.FormEvent) {
     e.preventDefault();
+    if (isCreatingTournament) return;
+    setIsCreatingTournament(true);
     try {
       await fetchApi('/tournaments', {
         method: 'POST',
@@ -137,6 +140,9 @@ export default function AdminClubDashboard() {
       setNewTournamentAdminKey('');
       loadData();
     } catch (e: any) { alert(e.message); }
+    finally {
+      setIsCreatingTournament(false);
+    }
   }
 
   async function handleEditTournament(id: string) {
@@ -301,7 +307,9 @@ export default function AdminClubDashboard() {
                   <label className="form-label">Clave de Árbitro</label>
                   <input type="password" className="input-text" required value={newTournamentAdminKey} onChange={e => setNewTournamentAdminKey(e.target.value)} />
                 </div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}><Plus size={18} /> Crear</button>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={isCreatingTournament}>
+                  {isCreatingTournament ? 'Creando...' : <><Plus size={18} /> Crear</>}
+                </button>
               </form>
             </div>
 

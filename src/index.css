@@ -66,8 +66,6 @@ body {
   background: var(--bg-surface);
   backdrop-filter: var(--blur-md);
   -webkit-backdrop-filter: var(--blur-md);
-  position: sticky;
-  top: 0;
   z-index: 100;
   box-shadow: var(--shadow-glass);
 }
