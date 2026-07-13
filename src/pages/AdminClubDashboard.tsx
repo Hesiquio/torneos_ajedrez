@@ -438,7 +438,7 @@ export default function AdminClubDashboard() {
                             <td style={{ verticalAlign: 'middle' }}><span className={`status-badge status-${t.status}`}>{t.status === 'created' ? 'Borrador' : t.status === 'in_progress' ? 'En Curso' : 'Finalizado'}</span></td>
                             <td>
                               <div style={{ display: 'flex', gap: '0.35rem' }}>
-                                <Link to={`/tournament/${t.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', flexShrink: 0 }}>Entrar</Link>
+                                <Link to={`/tournament/${t.slug || t.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem', flexShrink: 0 }}>Entrar</Link>
                                 <button className="btn btn-secondary" style={{ padding: '0.4rem', flexShrink: 0 }} onClick={() => { setEditingTournamentId(t.id); setEditTournamentName(t.name); setEditTournamentKey(''); }} title="Editar Torneo"><Edit2 size={14} /></button>
                                 <button className="btn btn-danger" style={{ padding: '0.4rem', flexShrink: 0 }} onClick={() => handleDeleteTournament(t.id)}><Trash2 size={14} /></button>
                               </div>

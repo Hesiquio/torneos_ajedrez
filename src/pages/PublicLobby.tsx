@@ -76,7 +76,7 @@ export default function PublicLobby() {
           
           <div className="tournament-grid">
             {tournaments.map(t => (
-              <Link to={`/tournament/${t.id}`} key={t.id} className="tournament-card">
+              <Link to={`/tournament/${t.slug || t.id}`} key={t.id} className="tournament-card">
                 <div className="tournament-card-header">
                   <h3 className="tournament-card-title">{t.name}</h3>
                   <span className={`status-badge status-${t.status}`}>

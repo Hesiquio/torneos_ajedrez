@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchApi } from '../api';
-import { Lock, Unlock, ChevronLeft, RefreshCw, Check, AlertTriangle, ShieldCheck, Trophy, Plus } from 'lucide-react';
+import { Lock, Unlock, ChevronLeft, RefreshCw, Check, AlertTriangle, ShieldCheck, Trophy, Plus, Eye, EyeOff } from 'lucide-react';
 import { getPlayerRank } from '../utils/ranks';
 
 export default function TournamentView() {
@@ -17,6 +17,7 @@ export default function TournamentView() {
   const [newPlayerName, setNewPlayerName] = useState('');
   const [newPlayerAge, setNewPlayerAge] = useState('');
   const [isCreatingPlayer, setIsCreatingPlayer] = useState(false);
+  const [showUnlockKey, setShowUnlockKey] = useState(false);
 
   useEffect(() => {
     loadTournament();
@@ -149,10 +150,39 @@ export default function TournamentView() {
             </div>
           </div>
           <div style={{ marginLeft: 'auto' }}>
-            {!isAdminUnlocked ? (
-              <form onSubmit={handleUnlock} style={{ display: 'flex', gap: '0.5rem' }}>
-                <input type="password" placeholder="Clave de Árbitro" className="input-text" style={{ padding: '0.5rem 1rem', width: '200px' }} value={adminKey} onChange={e => setAdminKey(e.target.value)} />
-                <button type="submit" className="btn btn-primary" title="Desbloquear panel"><Unlock size={18} /></button>
+              {!isAdminUnlocked ? (
+              <form onSubmit={handleUnlock} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', position: 'relative', alignItems: 'center' }}>
+                  <input 
+                    type={showUnlockKey ? "text" : "password"} 
+                    placeholder="Clave de Árbitro" 
+                    className="input-text" 
+                    style={{ padding: '0.5rem 2.5rem 0.5rem 1rem', width: '200px' }} 
+                    value={adminKey} 
+                    onChange={e => setAdminKey(e.target.value)} 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowUnlockKey(!showUnlockKey)} 
+                    style={{ 
+                      position: 'absolute', 
+                      right: '0.6rem', 
+                      background: 'none', 
+                      border: 'none', 
+                      color: 'var(--color-text-secondary)', 
+                      cursor: 'pointer',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title={showUnlockKey ? "Ocultar clave" : "Mostrar clave"}
+                  >
+                    {showUnlockKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <button type="submit" className="btn btn-primary" title="Desbloquear panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.6rem 0.8rem' }}>
+                  <Unlock size={18} />
+                </button>
               </form>
             ) : (
               <span className="status-badge" style={{ background: 'rgba(16, 185, 129, 0.2)', color: 'var(--color-success)', border: '1px solid var(--color-success)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
