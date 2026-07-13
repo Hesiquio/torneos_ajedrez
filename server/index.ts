@@ -69,7 +69,23 @@ function verifyGlobalAdmin(req: express.Request, res: express.Response, next: ex
   }
 }
 
-async function verifyTournamentAdminKey(tournamentId: string, req: express.Request): Promise<boolean> {
+async function resolveTournamentId(idOrSlug: string): Promise<string | null> {
+  try {
+    const res = await db.execute({
+      sql: 'SELECT id FROM tournaments WHERE id = ? OR slug = ?',
+      args: [idOrSlug, idOrSlug]
+    });
+    if (res.rows.length === 0) return null;
+    return String(res.rows[0].id);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function verifyTournamentAdminKey(tournamentIdOrSlug: string, req: express.Request): Promise<boolean> {
+  const tournamentId = await resolveTournamentId(tournamentIdOrSlug);
+  if (!tournamentId) return false;
+
   const token = req.headers.authorization?.split(' ')[1];
   if (token) {
     try {
@@ -95,7 +111,9 @@ async function verifyTournamentAdminKey(tournamentId: string, req: express.Reque
 
 app.post('/api/tournaments/:id/verify-admin', async (req, res) => {
   const { id } = req.params;
-  const isValid = await verifyTournamentAdminKey(id, req);
+  const actualId = await resolveTournamentId(id);
+  if (!actualId) return res.status(404).json({ error: 'Tournament not found' });
+  const isValid = await verifyTournamentAdminKey(actualId, req);
   if (!isValid) return res.status(403).json({ error: 'Clave incorrecta.' });
   res.json({ ok: true });
 });
@@ -744,15 +762,17 @@ app.get('/api/tournaments/:idOrSlug', async (req, res) => {
 
 app.post('/api/tournaments/:id/checkin', async (req, res) => {
   const { id } = req.params;
+  const actualId = await resolveTournamentId(id);
+  if (!actualId) return res.status(404).json({ error: 'Tournament not found' });
   const { playerIds } = req.body;
   try {
-    if (!(await verifyTournamentAdminKey(id, req))) return res.status(403).json({ error: 'Unauthorized' });
-    const tRes = await db.execute({ sql: 'SELECT status FROM tournaments WHERE id = ?', args: [id] });
+    if (!(await verifyTournamentAdminKey(actualId, req))) return res.status(403).json({ error: 'Unauthorized' });
+    const tRes = await db.execute({ sql: 'SELECT status FROM tournaments WHERE id = ?', args: [actualId] });
     if (tRes.rows[0]?.status !== 'created') return res.status(400).json({ error: 'Cannot check-in after started' });
 
-    await db.execute({ sql: 'DELETE FROM tournament_participants WHERE tournament_id = ?', args: [id] });
+    await db.execute({ sql: 'DELETE FROM tournament_participants WHERE tournament_id = ?', args: [actualId] });
     for (const pid of playerIds) {
-      await db.execute({ sql: 'INSERT INTO tournament_participants (tournament_id, player_id) VALUES (?, ?)', args: [id, pid] });
+      await db.execute({ sql: 'INSERT INTO tournament_participants (tournament_id, player_id) VALUES (?, ?)', args: [actualId, pid] });
     }
     res.json({ success: true });
   } catch (error) {
@@ -762,26 +782,28 @@ app.post('/api/tournaments/:id/checkin', async (req, res) => {
 
 app.post('/api/tournaments/:id/start', async (req, res) => {
   const { id } = req.params;
+  const actualId = await resolveTournamentId(id);
+  if (!actualId) return res.status(404).json({ error: 'Tournament not found' });
   try {
-    if (!(await verifyTournamentAdminKey(id, req))) return res.status(403).json({ error: 'Unauthorized' });
-    const tRes = await db.execute({ sql: 'SELECT status FROM tournaments WHERE id = ?', args: [id] });
+    if (!(await verifyTournamentAdminKey(actualId, req))) return res.status(403).json({ error: 'Unauthorized' });
+    const tRes = await db.execute({ sql: 'SELECT status FROM tournaments WHERE id = ?', args: [actualId] });
     if (tRes.rows[0]?.status !== 'created') return res.status(400).json({ error: 'Already started' });
 
-    await db.execute({ sql: "UPDATE tournaments SET status = 'in_progress' WHERE id = ?", args: [id] });
+    await db.execute({ sql: "UPDATE tournaments SET status = 'in_progress' WHERE id = ?", args: [actualId] });
 
-    const pResult = await db.execute({ sql: 'SELECT player_id FROM tournament_participants WHERE tournament_id = ?', args: [id] });
+    const pResult = await db.execute({ sql: 'SELECT player_id FROM tournament_participants WHERE tournament_id = ?', args: [actualId] });
     const participants = pResult.rows.map((r: any, idx: number) => ({ id: r.player_id, seed: idx + 1 }));
 
     if (participants.length < 2) return res.status(400).json({ error: 'Need at least 2 players' });
 
     const roundId = randomUUID();
-    await db.execute({ sql: 'INSERT INTO rounds (id, tournament_id, round_number, status) VALUES (?, ?, ?, ?)', args: [roundId, id, 1, 'pending'] });
+    await db.execute({ sql: 'INSERT INTO rounds (id, tournament_id, round_number, status) VALUES (?, ?, ?, ?)', args: [roundId, actualId, 1, 'pending'] });
 
     const matchups = generateNextRound(1, participants, []);
     for (const m of matchups) {
       await db.execute({
         sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id, is_bye) VALUES (?, ?, ?, ?, ?, ?)',
-        args: [randomUUID(), id, roundId, m.whitePlayerId, m.blackPlayerId, m.isBye ? 1 : 0]
+        args: [randomUUID(), actualId, roundId, m.whitePlayerId, m.blackPlayerId, m.isBye ? 1 : 0]
       });
     }
 
@@ -793,34 +815,36 @@ app.post('/api/tournaments/:id/start', async (req, res) => {
 
 app.post('/api/tournaments/:id/next-round', async (req, res) => {
   const { id } = req.params;
+  const actualId = await resolveTournamentId(id);
+  if (!actualId) return res.status(404).json({ error: 'Tournament not found' });
   try {
-    if (!(await verifyTournamentAdminKey(id, req))) return res.status(403).json({ error: 'Unauthorized' });
+    if (!(await verifyTournamentAdminKey(actualId, req))) return res.status(403).json({ error: 'Unauthorized' });
     
-    const rRes = await db.execute({ sql: 'SELECT * FROM rounds WHERE tournament_id = ? ORDER BY round_number DESC LIMIT 1', args: [id] });
+    const rRes = await db.execute({ sql: 'SELECT * FROM rounds WHERE tournament_id = ? ORDER BY round_number DESC LIMIT 1', args: [actualId] });
     if (rRes.rows.length === 0) return res.status(400).json({ error: 'No active rounds' });
     const lastRound = rRes.rows[0] as any;
     if (lastRound.status !== 'completed') return res.status(400).json({ error: 'Current round is not completed yet' });
 
     const nextRoundNumber = lastRound.round_number + 1;
 
-    const mRes = await db.execute({ sql: 'SELECT m.*, r.round_number FROM matches m JOIN rounds r ON m.round_id = r.id WHERE m.tournament_id = ?', args: [id] });
+    const mRes = await db.execute({ sql: 'SELECT m.*, r.round_number FROM matches m JOIN rounds r ON m.round_id = r.id WHERE m.tournament_id = ?', args: [actualId] });
     const matchHistory = mRes.rows.map((m: any) => ({
       round: m.round_number,
       home: { id: m.white_player_id, points: m.result === '1-0' ? 1 : m.result === '0.5-0.5' ? 0.5 : 0 },
       away: { id: m.black_player_id, points: m.result === '0-1' ? 1 : m.result === '0.5-0.5' ? 0.5 : 0 }
     }));
 
-    const pResult = await db.execute({ sql: 'SELECT player_id FROM tournament_participants WHERE tournament_id = ?', args: [id] });
+    const pResult = await db.execute({ sql: 'SELECT player_id FROM tournament_participants WHERE tournament_id = ?', args: [actualId] });
     const participants = pResult.rows.map((r: any, idx: number) => ({ id: r.player_id, seed: idx + 1 }));
 
     const roundId = randomUUID();
-    await db.execute({ sql: 'INSERT INTO rounds (id, tournament_id, round_number, status) VALUES (?, ?, ?, ?)', args: [roundId, id, nextRoundNumber, 'pending'] });
+    await db.execute({ sql: 'INSERT INTO rounds (id, tournament_id, round_number, status) VALUES (?, ?, ?, ?)', args: [roundId, actualId, nextRoundNumber, 'pending'] });
 
     const matchups = generateNextRound(nextRoundNumber, participants, matchHistory);
     for (const m of matchups) {
       await db.execute({
         sql: 'INSERT INTO matches (id, tournament_id, round_id, white_player_id, black_player_id, is_bye) VALUES (?, ?, ?, ?, ?, ?)',
-        args: [randomUUID(), id, roundId, m.whitePlayerId, m.blackPlayerId, m.isBye ? 1 : 0]
+        args: [randomUUID(), actualId, roundId, m.whitePlayerId, m.blackPlayerId, m.isBye ? 1 : 0]
       });
     }
 
@@ -861,23 +885,25 @@ app.post('/api/matches/:id/result', async (req, res) => {
 
 app.post('/api/tournaments/:id/complete', async (req, res) => {
   const { id } = req.params;
+  const actualId = await resolveTournamentId(id);
+  if (!actualId) return res.status(404).json({ error: 'Tournament not found' });
   try {
-    if (!(await verifyTournamentAdminKey(id, req))) return res.status(403).json({ error: 'Unauthorized' });
+    if (!(await verifyTournamentAdminKey(actualId, req))) return res.status(403).json({ error: 'Unauthorized' });
 
-    const tRes = await db.execute({ sql: 'SELECT * FROM tournaments WHERE id = ?', args: [id] });
+    const tRes = await db.execute({ sql: 'SELECT * FROM tournaments WHERE id = ?', args: [actualId] });
     const tournament = tRes.rows[0] as any;
 
-    await db.execute({ sql: "UPDATE tournaments SET status = 'completed' WHERE id = ?", args: [id] });
+    await db.execute({ sql: "UPDATE tournaments SET status = 'completed' WHERE id = ?", args: [actualId] });
 
     const pResult = await db.execute({
       sql: `SELECT p.id FROM players p JOIN tournament_participants tp ON p.id = tp.player_id WHERE tp.tournament_id = ?`,
-      args: [id]
+      args: [actualId]
     });
     const playerIds = pResult.rows.map((r: any) => r.id as string);
 
     const mRes = await db.execute({
       sql: 'SELECT white_player_id, black_player_id, result, is_bye FROM matches WHERE tournament_id = ?',
-      args: [id]
+      args: [actualId]
     });
 
     // Direct standings calculation (same as GET /tournaments/:id)
@@ -926,19 +952,23 @@ app.post('/api/tournaments/:id/complete', async (req, res) => {
 
 app.delete('/api/tournaments/:id', async (req, res) => {
   const { id } = req.params;
-  if (!(await verifyTournamentAdminKey(id, req))) return res.status(403).json({ error: 'Unauthorized' });
-  await db.execute({ sql: 'DELETE FROM tournaments WHERE id = ?', args: [id] });
+  const actualId = await resolveTournamentId(id);
+  if (!actualId) return res.status(404).json({ error: 'Tournament not found' });
+  if (!(await verifyTournamentAdminKey(actualId, req))) return res.status(403).json({ error: 'Unauthorized' });
+  await db.execute({ sql: 'DELETE FROM tournaments WHERE id = ?', args: [actualId] });
   res.json({ success: true });
 });
 
 app.patch('/api/tournaments/:id/archive', async (req, res) => {
   const { id } = req.params;
-  if (!(await verifyTournamentAdminKey(id, req))) return res.status(403).json({ error: 'Unauthorized' });
+  const actualId = await resolveTournamentId(id);
+  if (!actualId) return res.status(404).json({ error: 'Tournament not found' });
+  if (!(await verifyTournamentAdminKey(actualId, req))) return res.status(403).json({ error: 'Unauthorized' });
   const { unarchive } = req.body;
   if (unarchive) {
-    await db.execute({ sql: "UPDATE tournaments SET status = 'completed' WHERE id = ?", args: [id] });
+    await db.execute({ sql: "UPDATE tournaments SET status = 'completed' WHERE id = ?", args: [actualId] });
   } else {
-    await db.execute({ sql: "UPDATE tournaments SET status = 'archived' WHERE id = ?", args: [id] });
+    await db.execute({ sql: "UPDATE tournaments SET status = 'archived' WHERE id = ?", args: [actualId] });
   }
   res.json({ success: true });
 });
