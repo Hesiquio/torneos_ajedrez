@@ -146,10 +146,10 @@ export default function SuperAdminDashboard() {
                      <td><span className={`status-badge status-${t.status}`}>{t.status === 'created' ? 'Borrador' : t.status === 'in_progress' ? 'En Curso' : 'Finalizado'}</span></td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Link to={`/tournament/${t.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>Administrar</Link>
                         <button className="btn btn-danger" style={{ padding: '0.4rem 0.6rem' }} onClick={() => handleDeleteTournament(t.id)} title="Eliminar Torneo">
                           <Trash2 size={14} />
                         </button>
+                        <Link to={`/tournament/${t.id}`} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>Administrar</Link>
                       </div>
                     </td>
                   </tr>
